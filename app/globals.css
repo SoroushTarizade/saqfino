@@ -1,178 +1,358 @@
 @import "tailwindcss";
 
 /* =========================================================
-   Shabnam Font
-   ========================================================= */
+Shabnam Font
+Available weights:
+300 — Light
+400 — Regular
+700 — Bold
+========================================================= */
 
 @font-face {
-  font-family: "Shabnam";
-  src: url("/fonts/Shabnam-Light.woff2") format("woff2");
-  font-weight: 300;
-  font-style: normal;
-  font-display: swap;
+font-family: "Shabnam";
+src: url("/fonts/Shabnam-Light.woff2") format("woff2");
+font-weight: 300;
+font-style: normal;
+font-display: swap;
 }
 
 @font-face {
-  font-family: "Shabnam";
-  src: url("/fonts/Shabnam-Regular.woff2") format("woff2");
-  font-weight: 400;
-  font-style: normal;
-  font-display: swap;
+font-family: "Shabnam";
+src: url("/fonts/Shabnam-Regular.woff2") format("woff2");
+font-weight: 400;
+font-style: normal;
+font-display: swap;
 }
 
 @font-face {
-  font-family: "Shabnam";
-  src: url("/fonts/Shabnam-Bold.woff2") format("woff2");
-  font-weight: 700;
-  font-style: normal;
-  font-display: swap;
+font-family: "Shabnam";
+src: url("/fonts/Shabnam-Bold.woff2") format("woff2");
+font-weight: 700;
+font-style: normal;
+font-display: swap;
 }
 
 /* =========================================================
-   Saqfino Design Tokens
-   ========================================================= */
+Saqfino Design System
+Tailwind Theme Tokens
+========================================================= */
 
 @theme {
-  /* -------------------------------------------------------
-     Colors — Primary
-     ------------------------------------------------------- */
+/* -------------------------------------------------------
+Typography
+------------------------------------------------------- */
 
-  --color-primary: #cb1b1b;
+--font-shabnam: "Shabnam", sans-serif;
 
-  --color-primary-shade-1: #b41818;
-  --color-primary-shade-2: #9e1515;
-  --color-primary-shade-3: #871212;
-  --color-primary-shade-4: #700f0f;
-  --color-primary-shade-5: #5a0c0c;
-  --color-primary-shade-6: #430909;
+/* -------------------------------------------------------
+Primary Colors
+------------------------------------------------------- */
 
-  --color-primary-tint-1: #fdf1f1;
-  --color-primary-tint-2: #fce8e8;
-  --color-primary-tint-3: #f9d2d2;
-  --color-primary-tint-4: #f6bbbb;
-  --color-primary-tint-5: #fca197;
-  --color-primary-tint-6: #f66262;
-  --color-primary-tint-7: #e43434;
+--color-primary: #cb1b1b;
 
-  /* -------------------------------------------------------
-     Colors — Neutral
-     ------------------------------------------------------- */
+--color-primary-shade-1: #b41818;
+--color-primary-shade-2: #9e1515;
+--color-primary-shade-3: #871212;
+--color-primary-shade-4: #700f0f;
+--color-primary-shade-5: #5a0c0c;
+--color-primary-shade-6: #430909;
 
-  --color-white: #ffffff;
+--color-primary-tint-1: #fdf1f1;
+--color-primary-tint-2: #fce8e8;
+--color-primary-tint-3: #f9d2d2;
+--color-primary-tint-4: #f6bbbb;
+--color-primary-tint-5: #fca197;
+--color-primary-tint-6: #f66262;
+--color-primary-tint-7: #e43434;
 
-  --color-gray-2: #fafafa;
-  --color-gray-3: #f9f9f9;
-  --color-gray-4: #e1e1e1;
-  --color-gray-5: #d9d9d9;
-  --color-gray-6: #cbcbcb;
-  --color-gray-7: #adadad;
-  --color-gray-8: #909090;
-  --color-gray-9: #717171;
-  --color-gray-10: #505050;
-  --color-gray-11: #353535;
-  --color-gray-12: #212121;
-  --color-gray-13: #121212;
+/* -------------------------------------------------------
+Neutral Colors
+------------------------------------------------------- */
 
-  --color-black: #0c0c0c;
+--color-white: #ffffff;
 
-  /* -------------------------------------------------------
-     Colors — State
-     ------------------------------------------------------- */
+--color-gray-2: #fafafa;
+--color-gray-3: #f9f9f9;
+--color-gray-4: #e1e1e1;
+--color-gray-5: #d9d9d9;
+--color-gray-6: #cbcbcb;
+--color-gray-7: #adadad;
+--color-gray-8: #909090;
+--color-gray-9: #717171;
+--color-gray-10: #505050;
+--color-gray-11: #353535;
+--color-gray-12: #212121;
+--color-gray-13: #121212;
 
-  --color-error: #c30000;
-  --color-error-light-1: #ed2e2e;
-  --color-error-light-2: #fff2f2;
+--color-black: #0c0c0c;
 
-  --color-success: #00966d;
-  --color-success-light-1: #00ba88;
-  --color-success-light-2: #f3fdfa;
+/* -------------------------------------------------------
+State Colors
+------------------------------------------------------- */
 
-  --color-warning: #a9791c;
-  --color-warning-light-1: #f4b740;
-  --color-warning-light-2: #fff8e1;
+--color-error: #c30000;
+--color-error-light-1: #ed2e2e;
+--color-error-light-2: #fff2f2;
 
-  /* -------------------------------------------------------
-     Border Radius
-     ------------------------------------------------------- */
+--color-success: #00966d;
+--color-success-light-1: #00ba88;
+--color-success-light-2: #f3fdfa;
 
-  --radius-sm: 8px;
-  --radius-md: 12px;
-  --radius-lg: 16px;
+--color-warning: #a9791c;
+--color-warning-light-1: #f4b740;
+--color-warning-light-2: #fff8e1;
+
+/* -------------------------------------------------------
+Border Radius
+------------------------------------------------------- */
+
+--radius-sm: 8px;
+--radius-md: 12px;
+--radius-lg: 16px;
+
+/* -------------------------------------------------------
+Layout
+------------------------------------------------------- */
+
+--container-desktop: 1224px;
+
+--grid-gutter-desktop: 24px;
+--grid-gutter-tablet: 24px;
+--grid-gutter-mobile: 16px;
 }
 
 /* =========================================================
-   Global Variables
-   ========================================================= */
+CSS Variables
+Available globally for regular CSS / inline styles
+========================================================= */
 
 :root {
-  /* Typography */
-  --font-shabnam: "Shabnam", sans-serif;
+/* Typography */
+--font-shabnam: "Shabnam", sans-serif;
 
-  /* Layout */
-  --container-desktop: 1224px;
+/* Primary */
+--color-primary: #cb1b1b;
 
-  --grid-gutter-desktop: 24px;
-  --grid-gutter-tablet: 24px;
-  --grid-gutter-mobile: 16px;
+--color-primary-shade-1: #b41818;
+--color-primary-shade-2: #9e1515;
+--color-primary-shade-3: #871212;
+--color-primary-shade-4: #700f0f;
+--color-primary-shade-5: #5a0c0c;
+--color-primary-shade-6: #430909;
+
+--color-primary-tint-1: #fdf1f1;
+--color-primary-tint-2: #fce8e8;
+--color-primary-tint-3: #f9d2d2;
+--color-primary-tint-4: #f6bbbb;
+--color-primary-tint-5: #fca197;
+--color-primary-tint-6: #f66262;
+--color-primary-tint-7: #e43434;
+
+/* Neutral */
+--color-white: #ffffff;
+
+--color-gray-2: #fafafa;
+--color-gray-3: #f9f9f9;
+--color-gray-4: #e1e1e1;
+--color-gray-5: #d9d9d9;
+--color-gray-6: #cbcbcb;
+--color-gray-7: #adadad;
+--color-gray-8: #909090;
+--color-gray-9: #717171;
+--color-gray-10: #505050;
+--color-gray-11: #353535;
+--color-gray-12: #212121;
+--color-gray-13: #121212;
+
+--color-black: #0c0c0c;
+
+/* States */
+--color-error: #c30000;
+--color-error-light-1: #ed2e2e;
+--color-error-light-2: #fff2f2;
+
+--color-success: #00966d;
+--color-success-light-1: #00ba88;
+--color-success-light-2: #f3fdfa;
+
+--color-warning: #a9791c;
+--color-warning-light-1: #f4b740;
+--color-warning-light-2: #fff8e1;
+
+/* Radius */
+--radius-sm: 8px;
+--radius-md: 12px;
+--radius-lg: 16px;
+
+/* Layout */
+--container-desktop: 1224px;
+--grid-gutter-desktop: 24px;
+--grid-gutter-tablet: 24px;
+--grid-gutter-mobile: 16px;
 }
 
 /* =========================================================
-   Global Reset
-   ========================================================= */
+Global Reset
+========================================================= */
 
 * {
   box-sizing: border-box;
-}
+  }
 
 html {
-  min-height: 100%;
-  direction: rtl;
+min-height: 100%;
+direction: rtl;
+scroll-behavior: smooth;
 }
 
 body {
-  min-height: 100vh;
-  margin: 0;
+min-height: 100vh;
+margin: 0;
 
-  background: var(--color-white);
-  color: var(--color-gray-13);
+background-color: var(--color-white);
+color: var(--color-gray-13);
 
-  font-family: var(--font-shabnam);
-  direction: rtl;
+font-family: var(--font-shabnam);
+direction: rtl;
+
+-webkit-font-smoothing: antialiased;
+-moz-osx-font-smoothing: grayscale;
 }
+
+/* =========================================================
+Form Elements
+========================================================= */
 
 button,
 input,
 textarea,
 select {
-  font: inherit;
+font: inherit;
 }
 
 button {
-  cursor: pointer;
+cursor: pointer;
 }
+
+/* =========================================================
+Links
+========================================================= */
 
 a {
-  color: inherit;
-  text-decoration: none;
+color: inherit;
+text-decoration: none;
 }
 
+/* =========================================================
+Media
+========================================================= */
+
 img {
-  max-width: 100%;
-  height: auto;
+max-width: 100%;
+height: auto;
 }
+
+/* =========================================================
+Selection
+========================================================= */
+
+::selection {
+background-color: var(--color-primary-tint-3);
+color: var(--color-primary-shade-4);
+}
+
+/* =========================================================
+Scrollbar
+========================================================= */
+
+::-webkit-scrollbar {
+width: 8px;
+}
+
+::-webkit-scrollbar-track {
+background: var(--color-gray-3);
+}
+
+::-webkit-scrollbar-thumb {
+border-radius: 999px;
+background: var(--color-gray-6);
+}
+
+::-webkit-scrollbar-thumb:hover {
+background: var(--color-gray-7);
+}
+
+/* =========================================================
+Reusable CTA — Submit Advertisement
+========================================================= */
+
 .submit-button {
-  color: var(--color-primary);
-  transition:
-    background-color 200ms ease,
-    color 200ms ease,
-    transform 200ms ease;
+color: var(--color-primary);
+
+transition:
+background-color 200ms ease,
+color 200ms ease,
+border-color 200ms ease,
+transform 200ms ease,
+box-shadow 200ms ease;
 }
 
 .submit-button:hover {
-  background-color: var(--color-primary);
-  color: var(--color-white);
+background-color: var(--color-primary);
+border-color: var(--color-primary);
+color: var(--color-white);
+box-shadow: 0 4px 14px rgb(203 27 27 / 18%);
 }
 
 .submit-button:active {
-  transform: scale(0.95);
+transform: scale(0.97);
 }
+
+.submit-button:focus-visible {
+outline: 2px solid var(--color-primary);
+outline-offset: 3px;
+}
+
+/* =========================================================
+Accessibility
+========================================================= */
+
+:focus-visible {
+outline: 2px solid var(--color-primary);
+outline-offset: 3px;
+}
+
+/* =========================================================
+Responsive Container
+========================================================= */
+
+.saqfino-container {
+width: min(
+calc(100% - 32px),
+var(--container-desktop)
+);
+
+margin-inline: auto;
+}
+
+/* =========================================================
+Responsive Breakpoints
+========================================================= */
+
+/*
+Desktop
+≥ 1200px
+12 columns
+80px column width
+24px gutter
+
+Tablet
+768px — 1199px
+8 columns
+24px gutter
+
+Mobile
+< 768px
+4 columns
+16px gutter
+*/
