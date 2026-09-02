@@ -356,3 +356,9 @@ Mobile
 4 columns
 16px gutter
 */
+
+/* =========================================================
+   Footer Links
+   ========================================================= */
+
+.footer-link { position: relative; display: inline-block; padding-bottom: 3px; transition: color 200ms ease; } .footer-link::after { content: ""; position: absolute; right: 0; bottom: 0; width: 0; height: 2px; background-color: var(--color-primary); transition: width 250ms ease; } .footer-link:hover { color: var(--color-gray-12); } .footer-link:hover::after { width: 100%; }

@@ -45,6 +45,7 @@ export default function Header() {
     <>
       {/* Mobile / Tablet Header */}
       <header
+        id="top"
         className="
           fixed inset-x-0 top-0 z-50
           flex h-[72px] w-full items-center
