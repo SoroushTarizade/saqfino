@@ -409,3 +409,40 @@ Mobile
   border-right: 7px solid transparent;
   border-top: 8px solid var(--color-primary);
 }
+
+
+
+
+.custom-buy-marker {
+  background: transparent;
+  border: none;
+}
+
+.buy-property-marker {
+  position: relative;
+  width: 52px;
+  height: 34px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: var(--color-primary);
+  color: var(--color-white);
+  border-radius: 10px;
+  font-family: var(--font-shabnam);
+  font-size: 12px;
+  font-weight: 700;
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
+}
+
+.buy-property-marker::after {
+  content: "";
+  position: absolute;
+  bottom: -7px;
+  left: 50%;
+  width: 0;
+  height: 0;
+  transform: translateX(-50%);
+  border-left: 7px solid transparent;
+  border-right: 7px solid transparent;
+  border-top: 8px solid var(--color-primary);
+}

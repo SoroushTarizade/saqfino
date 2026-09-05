@@ -1,12 +1,13 @@
-import Footer from '@/components/footer/Footer'
-import Header from '@/components/header/Header'
-import React from 'react'
+import Header from "@/components/header/Header";
+import Buy from "@/components/buy/Buy";
+import Footer from "@/components/footer/Footer";
 
-export default function page() {
+export default function BuyPage() {
   return (
     <>
-    <Header></Header>
-    <Footer></Footer>
+      <Header />
+      <Buy />
+      <Footer />
     </>
-  )
+  );
 }
