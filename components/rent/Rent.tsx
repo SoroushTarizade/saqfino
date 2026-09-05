@@ -2,6 +2,7 @@
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
+import { useRouter } from "next/navigation";
 import React, { useMemo, useState } from "react";
 import { FaFilter, FaStar } from "react-icons/fa";
 import {
@@ -14,24 +15,11 @@ import {
   FiX,
 } from "react-icons/fi";
 
+import { properties, type Property } from "@/data/properties";
+
 const RentMap = dynamic(() => import("./RentMap"), {
   ssr: false,
 });
-
-type Property = {
-  id: number;
-  image: string;
-  title: string;
-  location: string;
-  deposit: number;
-  rent: number;
-  area: number;
-  type: string;
-  district: string;
-  lat: number;
-  lng: number;
-  createdAt: number;
-};
 
 type Office = {
   id: number;
@@ -41,65 +29,6 @@ type Office = {
   rating: number;
   activeAds: string;
 };
-
-const properties: Property[] = [
-  {
-    id: 1,
-    image: "/images/default.png",
-    title: "رهن و اجاره آپارتمان",
-    location: "محدوده ولیعصر، تابان",
-    deposit: 600,
-    rent: 30,
-    area: 100,
-    type: "آپارتمان",
-    district: "منطقه ۶",
-    lat: 35.7219,
-    lng: 51.4078,
-    createdAt: 4,
-  },
-  {
-    id: 2,
-    image: "/images/rent1.png",
-    title: "رهن و اجاره آپارتمان",
-    location: "خیابان ولیعصر، بالاتر از پارک وی",
-    deposit: 850,
-    rent: 35,
-    area: 120,
-    type: "آپارتمان",
-    district: "منطقه ۱",
-    lat: 35.785,
-    lng: 51.407,
-    createdAt: 3,
-  },
-  {
-    id: 3,
-    image: "/images/rent2.png",
-    title: "رهن و اجاره واحد مسکونی",
-    location: "یوسف‌آباد، خیابان اسدآبادی",
-    deposit: 500,
-    rent: 25,
-    area: 90,
-    type: "آپارتمان",
-    district: "منطقه ۶",
-    lat: 35.735,
-    lng: 51.403,
-    createdAt: 2,
-  },
-  {
-    id: 4,
-    image: "/images/rent3.png",
-    title: "رهن و اجاره آپارتمان نوساز",
-    location: "سعادت‌آباد، بلوار پاکنژاد",
-    deposit: 1200,
-    rent: 45,
-    area: 145,
-    type: "آپارتمان",
-    district: "منطقه ۲",
-    lat: 35.784,
-    lng: 51.375,
-    createdAt: 1,
-  },
-];
 
 const offices: Office[] = [
   {
@@ -136,7 +65,12 @@ const offices: Office[] = [
   },
 ];
 
-const districts = ["همه مناطق", "منطقه ۱", "منطقه ۲", "منطقه ۶"];
+const districts = [
+  "همه مناطق",
+  "منطقه ۱",
+  "منطقه ۲",
+  "منطقه ۶",
+];
 
 const propertyTypes = [
   "همه انواع",
@@ -234,9 +168,16 @@ function PropertyCard({
   onBookmark,
   onSelect,
 }: PropertyCardProps) {
+  const router = useRouter();
+
+  const handleCardClick = () => {
+    onSelect(property);
+    router.push(`/rent/${property.id}`);
+  };
+
   return (
     <article
-      onClick={() => onSelect(property)}
+      onClick={handleCardClick}
       className="
         group
         cursor-pointer
@@ -313,7 +254,8 @@ function PropertyCard({
         </div>
 
         <p className="text-sm text-gray-9">
-          {property.area.toLocaleString("fa-IR")} متر، {property.location}
+          {property.area.toLocaleString("fa-IR")} متر،{" "}
+          {property.location}
         </p>
 
         <div className="mt-auto space-y-1 text-sm text-gray-11">
@@ -360,7 +302,9 @@ function OfficeCard({ office }: { office: Office }) {
         />
       </div>
 
-      <h4 className="text-lg font-bold text-gray-12">{office.name}</h4>
+      <h4 className="text-lg font-bold text-gray-12">
+        {office.name}
+      </h4>
 
       <div className="mt-4 space-y-2 text-sm text-gray-9">
         <p>{office.address}</p>
@@ -377,7 +321,9 @@ function OfficeCard({ office }: { office: Office }) {
 
         <p>
           آگهی‌های فعال:{" "}
-          <span className="font-bold text-gray-11">{office.activeAds}</span>
+          <span className="font-bold text-gray-11">
+            {office.activeAds}
+          </span>
         </p>
       </div>
 
@@ -428,10 +374,12 @@ export default function Rent() {
         property.title.includes(normalizedSearch);
 
       const matchesDistrict =
-        district === "همه مناطق" || property.district === district;
+        district === "همه مناطق" ||
+        property.district === district;
 
       const matchesType =
-        propertyType === "همه انواع" || property.type === propertyType;
+        propertyType === "همه انواع" ||
+        property.type === propertyType;
 
       let matchesPrice = true;
 
@@ -440,11 +388,15 @@ export default function Rent() {
       }
 
       if (price === "۲۰ تا ۳۰ میلیون") {
-        matchesPrice = property.rent >= 20 && property.rent <= 30;
+        matchesPrice =
+          property.rent >= 20 &&
+          property.rent <= 30;
       }
 
       if (price === "۳۰ تا ۵۰ میلیون") {
-        matchesPrice = property.rent > 30 && property.rent <= 50;
+        matchesPrice =
+          property.rent > 30 &&
+          property.rent <= 50;
       }
 
       if (price === "بالای ۵۰ میلیون") {
@@ -458,11 +410,15 @@ export default function Rent() {
       }
 
       if (area === "۸۰ تا ۱۲۰ متر") {
-        matchesArea = property.area >= 80 && property.area <= 120;
+        matchesArea =
+          property.area >= 80 &&
+          property.area <= 120;
       }
 
       if (area === "۱۲۰ تا ۱۵۰ متر") {
-        matchesArea = property.area > 120 && property.area <= 150;
+        matchesArea =
+          property.area > 120 &&
+          property.area <= 150;
       }
 
       if (area === "بالای ۱۵۰ متر") {
@@ -479,19 +435,32 @@ export default function Rent() {
     });
 
     if (sort === "ارزان‌ترین") {
-      result = [...result].sort((a, b) => a.rent - b.rent);
+      result = [...result].sort(
+        (a, b) => a.rent - b.rent,
+      );
     }
 
     if (sort === "گران‌ترین") {
-      result = [...result].sort((a, b) => b.rent - a.rent);
+      result = [...result].sort(
+        (a, b) => b.rent - a.rent,
+      );
     }
 
     if (sort === "جدیدترین") {
-      result = [...result].sort((a, b) => b.createdAt - a.createdAt);
+      result = [...result].sort(
+        (a, b) => b.createdAt - a.createdAt,
+      );
     }
 
     return result;
-  }, [search, district, propertyType, price, area, sort]);
+  }, [
+    search,
+    district,
+    propertyType,
+    price,
+    area,
+    sort,
+  ]);
 
   const clearFilters = () => {
     setSearch("");
@@ -512,7 +481,6 @@ export default function Rent() {
 
   return (
     <div className="min-h-screen bg-white">
-      {/* فاصله مخصوص هدر fixed در موبایل و تبلت */}
       <section
         className="
           mx-auto
@@ -609,7 +577,9 @@ export default function Rent() {
 
             <button
               type="button"
-              onClick={() => setShowMoreFilters((current) => !current)}
+              onClick={() =>
+                setShowMoreFilters((current) => !current)
+              }
               className="
                 flex
                 h-12
@@ -650,11 +620,13 @@ export default function Rent() {
           >
             <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
               <div>
-                <h3 className="font-bold text-gray-12">فیلترهای بیشتر</h3>
+                <h3 className="font-bold text-gray-12">
+                  فیلترهای بیشتر
+                </h3>
 
                 <p className="mt-1 text-sm text-gray-8">
-                  برای پیدا کردن ملک مناسب، فیلترهای مورد نظر خود را انتخاب
-                  کنید.
+                  برای پیدا کردن ملک مناسب، فیلترهای مورد نظر
+                  خود را انتخاب کنید.
                 </p>
               </div>
 
@@ -703,8 +675,8 @@ export default function Rent() {
               </h1>
 
               <p className="mt-1 text-sm text-gray-8">
-                {filteredProperties.length.toLocaleString("fa-IR")} مورد یافت
-                شد
+                {filteredProperties.length.toLocaleString("fa-IR")} مورد
+                یافت شد
               </p>
             </div>
 
@@ -739,6 +711,8 @@ export default function Rent() {
                   absolute
                   left-3
                   top-1/2
+                  h-4
+                  w-4
                   -translate-y-1/2
                   text-gray-8
                 "
@@ -833,10 +807,14 @@ export default function Rent() {
               <div className="flex items-center gap-2">
                 <FiMap className="text-primary" />
 
-                <span className="font-bold text-gray-12">موقعیت املاک</span>
+                <span className="font-bold text-gray-12">
+                  موقعیت املاک
+                </span>
               </div>
 
-              <span className="text-xs text-gray-8">تهران</span>
+              <span className="text-xs text-gray-8">
+                تهران
+              </span>
             </div>
 
             <div className="h-[350px] sm:h-[450px] lg:h-[751px]">
@@ -866,7 +844,8 @@ export default function Rent() {
                     </h3>
 
                     <p className="mt-1 text-xs text-gray-8">
-                      {selectedProperty.area.toLocaleString("fa-IR")} متر،{" "}
+                      {selectedProperty.area.toLocaleString("fa-IR")} متر،
+                      {" "}
                       {selectedProperty.location}
                     </p>
 
@@ -904,7 +883,10 @@ export default function Rent() {
             "
           >
             {offices.map((office) => (
-              <OfficeCard key={office.id} office={office} />
+              <OfficeCard
+                key={office.id}
+                office={office}
+              />
             ))}
           </div>
         </div>

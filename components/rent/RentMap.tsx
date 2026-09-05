@@ -3,6 +3,7 @@
 import "leaflet/dist/leaflet.css";
 
 import L from "leaflet";
+import { useEffect } from "react";
 import {
   MapContainer,
   Marker,
@@ -10,19 +11,8 @@ import {
   TileLayer,
   useMap,
 } from "react-leaflet";
-import { useEffect } from "react";
 
-type Property = {
-  id: number;
-  image: string;
-  title: string;
-  location: string;
-  deposit: number;
-  rent: number;
-  area: number;
-  lat: number;
-  lng: number;
-};
+import type { Property } from "@/data/properties";
 
 type RentMapProps = {
   properties: Property[];
@@ -50,14 +40,16 @@ function MapController({
   const map = useMap();
 
   useEffect(() => {
-    if (!selectedProperty) return;
+    if (!selectedProperty) {
+      return;
+    }
 
     map.flyTo(
       [selectedProperty.lat, selectedProperty.lng],
       14,
       {
         duration: 0.8,
-      }
+      },
     );
   }, [selectedProperty, map]);
 
@@ -83,19 +75,25 @@ export default function RentMap({
         className="h-full w-full"
       >
         <TileLayer
-          attribution='&copy; OpenStreetMap contributors'
+          attribution="&copy; OpenStreetMap contributors"
           url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
         />
 
-        <MapController selectedProperty={selectedProperty} />
+        <MapController
+          selectedProperty={selectedProperty}
+        />
 
         {properties.map((property) => (
           <Marker
             key={property.id}
-            position={[property.lat, property.lng]}
+            position={[
+              property.lat,
+              property.lng,
+            ]}
             icon={propertyIcon}
             eventHandlers={{
-              click: () => onSelectProperty(property),
+              click: () =>
+                onSelectProperty(property),
             }}
           >
             <Popup>
@@ -108,7 +106,8 @@ export default function RentMap({
                 </strong>
 
                 <span className="mt-1 block text-xs text-gray-500">
-                  {property.area} متر، {property.location}
+                  {property.area.toLocaleString("fa-IR")} متر،{" "}
+                  {property.location}
                 </span>
 
                 <div className="mt-2 space-y-1 text-xs">
@@ -118,8 +117,8 @@ export default function RentMap({
                   </p>
 
                   <p>
-                    {property.rent.toLocaleString("fa-IR")} میلیون
-                    تومان اجاره
+                    {property.rent.toLocaleString("fa-IR")} میلیون تومان
+                    اجاره
                   </p>
                 </div>
               </div>
