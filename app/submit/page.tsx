@@ -1,9 +1,13 @@
-import React from 'react'
+import Header from "@/components/header/Header";
+import Submit from "@/components/submit/Submit";
+import Footer from "@/components/footer/Footer";
 
-export default function page() {
+export default function SubmitPage() {
   return (
-    <div>
-      Submit
-    </div>
-  )
+    <>
+      <Header />
+      <Submit />
+      <Footer />
+    </>
+  );
 }
