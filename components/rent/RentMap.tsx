@@ -13,6 +13,7 @@ import {
 } from "react-leaflet";
 
 import type { Property } from "@/data/properties";
+import { formatPrice } from "@/lib/formatPrice";
 
 type RentMapProps = {
   properties: Property[];
@@ -24,7 +25,7 @@ const propertyIcon = new L.DivIcon({
   className: "custom-property-marker",
   html: `
     <div class="property-marker">
-      <span>رهن</span>
+      <span>اجاره</span>
     </div>
   `,
   iconSize: [52, 38],
@@ -45,7 +46,10 @@ function MapController({
     }
 
     map.flyTo(
-      [selectedProperty.lat, selectedProperty.lng],
+      [
+        selectedProperty.lat,
+        selectedProperty.lng,
+      ],
       14,
       {
         duration: 0.8,
@@ -56,7 +60,7 @@ function MapController({
   return null;
 }
 
-export default function RentMap({
+function RentMap({
   properties,
   selectedProperty,
   onSelectProperty,
@@ -92,14 +96,15 @@ export default function RentMap({
             ]}
             icon={propertyIcon}
             eventHandlers={{
-              click: () =>
-                onSelectProperty(property),
+              click: () => {
+                onSelectProperty(property);
+              },
             }}
           >
             <Popup>
               <div
                 dir="rtl"
-                className="min-w-[190px] text-right"
+                className="min-w-[200px] text-right"
               >
                 <strong className="block text-sm">
                   {property.title}
@@ -112,13 +117,16 @@ export default function RentMap({
 
                 <div className="mt-2 space-y-1 text-xs">
                   <p>
-                    {property.deposit.toLocaleString("fa-IR")} میلیون
-                    تومان رهن
+                    ودیعه:{" "}
+                    {formatPrice(property.deposit / 100_000_000)}
                   </p>
 
                   <p>
-                    {property.rent.toLocaleString("fa-IR")} میلیون تومان
-                    اجاره
+                    اجاره ماهانه:{" "}
+                    {property.rent.toLocaleString(
+                      "fa-IR",
+                    )}{" "}
+                    میلیون تومان
                   </p>
                 </div>
               </div>
@@ -129,3 +137,5 @@ export default function RentMap({
     </div>
   );
 }
+
+export default RentMap;

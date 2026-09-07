@@ -1,9 +1,10 @@
 "use client";
 
+import { formatPrice } from "@/lib/formatPrice";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useMemo, useState } from "react";
+import React, { useEffect, useMemo, useState } from "react";
 import { FaFilter } from "react-icons/fa";
 import {
   FiBookmark,
@@ -14,6 +15,11 @@ import {
   FiSliders,
   FiX,
 } from "react-icons/fi";
+
+import {
+  getSubmittedBuyProperties,
+  type SubmittedProperty,
+} from "@/lib/submittedProperties";
 
 import {
   buyProperties,
@@ -169,7 +175,7 @@ function PropertyCard({
     >
       <div className="relative overflow-hidden">
         <Image
-          src={property.image}
+          src={property.image || "/images/default.png"}
           alt={property.title}
           width={288}
           height={167}
@@ -252,7 +258,7 @@ function PropertyCard({
 
         <div className="mt-auto border-t border-gray-4 pt-3">
           <p className="text-base font-bold text-gray-13">
-            {property.price.toLocaleString("fa-IR")} میلیون تومان
+            {formatPrice(property.price)}
           </p>
 
           <p className="mt-1 text-xs text-gray-8">
@@ -291,8 +297,54 @@ export default function Buy() {
   const [selectedProperty, setSelectedProperty] =
     useState<BuyProperty | null>(null);
 
+  const [submittedProperties, setSubmittedProperties] =
+    useState<SubmittedProperty[]>([]);
+
+  useEffect(() => {
+    setSubmittedProperties(
+      getSubmittedBuyProperties(),
+    );
+  }, []);
+
+  const submittedBuyProperties = useMemo<BuyProperty[]>(
+    () =>
+      submittedProperties.map((property) => ({
+        id: property.id,
+        image:
+          property.image || "/images/default.png",
+        images:
+          property.images.length > 0
+            ? property.images
+            : ["/images/default.png"],
+        title: property.title,
+        location: `${property.city}، ${property.district}`,
+        district: property.district,
+        price: property.salePrice / 1_000_000,
+        area: property.area,
+        bedrooms: property.bedrooms,
+        floor: property.floor,
+        totalFloors: property.totalFloors,
+        yearBuilt: property.yearBuilt,
+        type: property.propertyType,
+        amenities: property.amenities,
+        description: property.description,
+        lat: property.latitude,
+        lng: property.longitude,
+        createdAt: property.createdAt,
+      })),
+    [submittedProperties],
+  );
+
+  const allBuyProperties = useMemo<BuyProperty[]>(
+    () => [
+      ...submittedBuyProperties,
+      ...buyProperties,
+    ],
+    [submittedBuyProperties],
+  );
+
   const filteredProperties = useMemo(() => {
-    let result = buyProperties.filter((property) => {
+    let result = allBuyProperties.filter((property) => {
       const normalizedSearch = search.trim();
 
       const matchesSearch =
@@ -433,6 +485,7 @@ export default function Buy() {
 
     return result;
   }, [
+    allBuyProperties,
     search,
     district,
     propertyType,
@@ -492,7 +545,6 @@ export default function Buy() {
             rounded-xl
             border
             border-gray-5
-            bg-white
             p-4
             shadow-sm
             lg:flex-row
@@ -681,8 +733,7 @@ export default function Buy() {
               </h1>
 
               <p className="mt-1 text-sm text-gray-8">
-                {filteredProperties.length.toLocaleString("fa-IR")} مورد
-                یافت شد
+                {filteredProperties.length.toLocaleString("fa-IR")} مورد یافت شد
               </p>
             </div>
 
@@ -708,21 +759,10 @@ export default function Buy() {
                   focus:border-primary
                 "
               >
-                <option value="جدیدترین">
-                  جدیدترین
-                </option>
-
-                <option value="ارزان‌ترین">
-                  ارزان‌ترین
-                </option>
-
-                <option value="گران‌ترین">
-                  گران‌ترین
-                </option>
-
-                <option value="متراژ بیشتر">
-                  متراژ بیشتر
-                </option>
+                <option value="جدیدترین">جدیدترین</option>
+                <option value="ارزان‌ترین">ارزان‌ترین</option>
+                <option value="گران‌ترین">گران‌ترین</option>
+                <option value="متراژ بیشتر">متراژ بیشتر</option>
               </select>
 
               <FiChevronDown
@@ -746,9 +786,7 @@ export default function Buy() {
                 <PropertyCard
                   key={property.id}
                   property={property}
-                  bookmarked={bookmarked.includes(
-                    property.id,
-                  )}
+                  bookmarked={bookmarked.includes(property.id)}
                   onBookmark={toggleBookmark}
                   onSelect={handlePropertySelect}
                 />
@@ -852,7 +890,10 @@ export default function Buy() {
                 <div className="flex items-center gap-3">
                   <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-md">
                     <Image
-                      src={selectedProperty.image}
+                      src={
+                        selectedProperty.image ||
+                        "/images/default.png"
+                      }
                       alt={selectedProperty.title}
                       fill
                       sizes="80px"
@@ -866,17 +907,12 @@ export default function Buy() {
                     </h3>
 
                     <p className="mt-1 text-xs text-gray-8">
-                      {selectedProperty.area.toLocaleString(
-                        "fa-IR",
-                      )}{" "}
-                      متر، {selectedProperty.location}
+                      {selectedProperty.area.toLocaleString("fa-IR")} متر،{" "}
+                      {selectedProperty.location}
                     </p>
 
                     <p className="mt-1 text-xs font-bold text-primary">
-                      {selectedProperty.price.toLocaleString(
-                        "fa-IR",
-                      )}{" "}
-                      میلیون تومان
+                      {selectedProperty.price.toLocaleString("fa-IR")} میلیون تومان
                     </p>
                   </div>
                 </div>

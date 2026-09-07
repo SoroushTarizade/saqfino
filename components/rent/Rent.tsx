@@ -1,10 +1,16 @@
 "use client";
 
+import { formatPrice } from "@/lib/formatPrice";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useMemo, useState } from "react";
-import { FaFilter, FaStar } from "react-icons/fa";
+import React, {
+  useEffect,
+  useMemo,
+  useState,
+} from "react";
+
+import { FaFilter } from "react-icons/fa";
 import {
   FiBookmark,
   FiChevronDown,
@@ -15,60 +21,28 @@ import {
   FiX,
 } from "react-icons/fi";
 
-import { properties, type Property } from "@/data/properties";
+import {
+  getSubmittedRentProperties,
+  type SubmittedProperty,
+} from "@/lib/submittedProperties";
 
-const RentMap = dynamic(() => import("./RentMap"), {
-  ssr: false,
-});
+import {
+  properties,
+  type Property,
+} from "@/data/properties";
 
-type Office = {
-  id: number;
-  image: string;
-  name: string;
-  address: string;
-  rating: number;
-  activeAds: string;
-};
-
-const offices: Office[] = [
+const RentMap = dynamic(
+  () => import("./RentMap"),
   {
-    id: 1,
-    image: "/images/default.png",
-    name: "مشاور املاک البرز",
-    address: "تهران، خیابان ولیعصر",
-    rating: 4,
-    activeAds: "بیش از ۲۰۰۰",
+    ssr: false,
   },
-  {
-    id: 2,
-    image: "/images/RealEstate1.png",
-    name: "املاک پایتخت",
-    address: "تهران، سعادت‌آباد",
-    rating: 4.5,
-    activeAds: "بیش از ۱۵۰۰",
-  },
-  {
-    id: 3,
-    image: "/images/default.png",
-    name: "املاک مرکزی",
-    address: "تهران، یوسف‌آباد",
-    rating: 4,
-    activeAds: "بیش از ۱۰۰۰",
-  },
-  {
-    id: 4,
-    image: "/images/RealEstate1.png",
-    name: "خانه ایرانی",
-    address: "تهران، ونک",
-    rating: 4.5,
-    activeAds: "بیش از ۸۰۰",
-  },
-];
+);
 
 const districts = [
   "همه مناطق",
   "منطقه ۱",
   "منطقه ۲",
+  "منطقه ۳",
   "منطقه ۶",
 ];
 
@@ -80,12 +54,20 @@ const propertyTypes = [
   "دفتر کار",
 ];
 
-const prices = [
-  "همه قیمت‌ها",
-  "زیر ۲۰ میلیون",
+const deposits = [
+  "همه ودیعه‌ها",
+  "زیر ۵۰۰ میلیون",
+  "۵۰۰ میلیون تا ۱ میلیارد",
+  "۱ تا ۲ میلیارد",
+  "بالای ۲ میلیارد",
+];
+
+const rents = [
+  "همه اجاره‌ها",
+  "زیر ۱۰ میلیون",
+  "۱۰ تا ۲۰ میلیون",
   "۲۰ تا ۳۰ میلیون",
-  "۳۰ تا ۵۰ میلیون",
-  "بالای ۵۰ میلیون",
+  "بالای ۳۰ میلیون",
 ];
 
 const areas = [
@@ -94,6 +76,23 @@ const areas = [
   "۸۰ تا ۱۲۰ متر",
   "۱۲۰ تا ۱۵۰ متر",
   "بالای ۱۵۰ متر",
+];
+
+const bedrooms = [
+  "همه تعداد اتاق‌ها",
+  "بدون اتاق",
+  "۱ خواب",
+  "۲ خواب",
+  "۳ خواب",
+  "۴ خواب و بیشتر",
+];
+
+const buildYears = [
+  "همه سال‌ها",
+  "۱۴۰۳ به بعد",
+  "۱۴۰۰ تا ۱۴۰۲",
+  "۱۳۹۵ تا ۱۳۹۹",
+  "قبل از ۱۳۹۵",
 ];
 
 type FilterDropdownProps = {
@@ -111,7 +110,9 @@ function FilterDropdown({
     <div className="relative min-w-[130px] flex-1 sm:flex-none">
       <select
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
         className="
           h-12
           w-full
@@ -133,7 +134,10 @@ function FilterDropdown({
         "
       >
         {options.map((option) => (
-          <option key={option} value={option}>
+          <option
+            key={option}
+            value={option}
+          >
             {option}
           </option>
         ))}
@@ -168,16 +172,9 @@ function PropertyCard({
   onBookmark,
   onSelect,
 }: PropertyCardProps) {
-  const router = useRouter();
-
-  const handleCardClick = () => {
-    onSelect(property);
-    router.push(`/rent/${property.id}`);
-  };
-
   return (
     <article
-      onClick={handleCardClick}
+      onClick={() => onSelect(property)}
       className="
         group
         cursor-pointer
@@ -195,7 +192,10 @@ function PropertyCard({
     >
       <div className="relative overflow-hidden">
         <Image
-          src={property.image}
+          src={
+            property.image ||
+            "/images/default.png"
+          }
           alt={property.title}
           width={288}
           height={167}
@@ -242,9 +242,9 @@ function PropertyCard({
         </button>
       </div>
 
-      <div className="flex min-h-[150px] flex-col gap-2 p-4">
+      <div className="flex min-h-[205px] flex-col gap-2 p-4">
         <div className="flex items-center justify-between gap-3">
-          <span className="text-sm font-bold text-gray-12">
+          <span className="min-w-0 truncate text-sm font-bold text-gray-12">
             {property.title}
           </span>
 
@@ -254,228 +254,544 @@ function PropertyCard({
         </div>
 
         <p className="text-sm text-gray-9">
-          {property.area.toLocaleString("fa-IR")} متر،{" "}
-          {property.location}
+          {property.area.toLocaleString(
+            "fa-IR",
+          )}{" "}
+          متر، {property.location}
         </p>
 
-        <div className="mt-auto space-y-1 text-sm text-gray-11">
-          <p>
-            {property.deposit.toLocaleString("fa-IR")} میلیون تومان رهن
+        <div className="mt-1 flex items-center gap-2 text-xs text-gray-8">
+          <span>
+            {property.bedrooms.toLocaleString(
+              "fa-IR",
+            )}{" "}
+            خواب
+          </span>
+
+          <span>•</span>
+
+          <span>
+            طبقه{" "}
+            {property.floor.toLocaleString(
+              "fa-IR",
+            )}
+          </span>
+
+          <span>•</span>
+
+          <span>
+            ساخت{" "}
+            {property.yearBuilt.toLocaleString(
+              "fa-IR",
+            )}
+          </span>
+        </div>
+
+        <div className="mt-auto border-t border-gray-4 pt-3">
+          <p className="text-base font-bold text-gray-13">
+            ودیعه{" "}
+            {formatPrice(property.deposit)}
           </p>
 
-          <p>
-            {property.rent.toLocaleString("fa-IR")} میلیون تومان اجاره
+          <p className="mt-1 text-xs text-gray-8">
+            اجاره ماهانه{" "}
+            {property.rent.toLocaleString(
+              "fa-IR",
+            )}{" "}
+            میلیون تومان
           </p>
         </div>
       </div>
-    </article>
-  );
-}
-
-function OfficeCard({ office }: { office: Office }) {
-  return (
-    <article
-      className="
-        group
-        flex
-        min-w-[270px]
-        flex-1
-        flex-col
-        items-center
-        rounded-lg
-        bg-white
-        p-6
-        text-center
-        transition-all
-        duration-300
-        hover:-translate-y-1
-        hover:shadow-lg
-      "
-    >
-      <div className="relative mb-4 h-[66px] w-[94px] overflow-hidden rounded-md">
-        <Image
-          src={office.image}
-          alt={office.name}
-          fill
-          sizes="94px"
-          className="object-cover"
-        />
-      </div>
-
-      <h4 className="text-lg font-bold text-gray-12">
-        {office.name}
-      </h4>
-
-      <div className="mt-4 space-y-2 text-sm text-gray-9">
-        <p>{office.address}</p>
-
-        <div className="flex items-center justify-center gap-1">
-          <span>میزان رضایتمندی:</span>
-
-          <span className="font-bold text-gray-11">
-            {office.rating.toLocaleString("fa-IR")} از ۵
-          </span>
-
-          <FaStar className="text-warning-light-1" />
-        </div>
-
-        <p>
-          آگهی‌های فعال:{" "}
-          <span className="font-bold text-gray-11">
-            {office.activeAds}
-          </span>
-        </p>
-      </div>
-
-      <button
-        type="button"
-        className="
-          mt-5
-          rounded-md
-          border
-          border-primary
-          px-4
-          py-2
-          text-sm
-          font-bold
-          text-primary
-          transition-all
-          duration-200
-          hover:bg-primary
-          hover:text-white
-        "
-      >
-        مشاهده نظرات کاربران
-      </button>
     </article>
   );
 }
 
 export default function Rent() {
-  const [search, setSearch] = useState("");
-  const [district, setDistrict] = useState("همه مناطق");
-  const [propertyType, setPropertyType] = useState("همه انواع");
-  const [price, setPrice] = useState("همه قیمت‌ها");
-  const [area, setArea] = useState("همه متراژها");
-  const [sort, setSort] = useState("جدیدترین");
+  const router = useRouter();
 
-  const [showMoreFilters, setShowMoreFilters] = useState(false);
-  const [bookmarked, setBookmarked] = useState<number[]>([]);
-  const [selectedProperty, setSelectedProperty] =
-    useState<Property | null>(null);
+  const [search, setSearch] =
+    useState("");
 
-  const filteredProperties = useMemo(() => {
-    let result = properties.filter((property) => {
-      const normalizedSearch = search.trim();
+  const [district, setDistrict] =
+    useState("همه مناطق");
 
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        property.location.includes(normalizedSearch) ||
-        property.title.includes(normalizedSearch);
+  const [propertyType, setPropertyType] =
+    useState("همه انواع");
 
-      const matchesDistrict =
-        district === "همه مناطق" ||
-        property.district === district;
+  const [deposit, setDeposit] =
+    useState("همه ودیعه‌ها");
 
-      const matchesType =
-        propertyType === "همه انواع" ||
-        property.type === propertyType;
+  const [rent, setRent] =
+    useState("همه اجاره‌ها");
 
-      let matchesPrice = true;
+  const [area, setArea] =
+    useState("همه متراژها");
 
-      if (price === "زیر ۲۰ میلیون") {
-        matchesPrice = property.rent < 20;
+  const [bedroom, setBedroom] =
+    useState("همه تعداد اتاق‌ها");
+
+  const [buildYear, setBuildYear] =
+    useState("همه سال‌ها");
+
+  const [sort, setSort] =
+    useState("جدیدترین");
+
+  const [
+    showMoreFilters,
+    setShowMoreFilters,
+  ] = useState(false);
+
+  const [bookmarked, setBookmarked] =
+    useState<number[]>([]);
+
+  const [
+    selectedProperty,
+    setSelectedProperty,
+  ] = useState<Property | null>(null);
+
+  const [
+    submittedProperties,
+    setSubmittedProperties,
+  ] = useState<SubmittedProperty[]>(
+    [],
+  );
+
+  useEffect(() => {
+    setSubmittedProperties(
+      getSubmittedRentProperties(),
+    );
+  }, []);
+
+  const submittedRentProperties =
+    useMemo<Property[]>(
+      () =>
+        submittedProperties.map(
+          (property) => ({
+            id: property.id,
+
+            image:
+              property.image ||
+              "/images/default.png",
+
+            images:
+              property.images.length > 0
+                ? property.images
+                : [
+                    "/images/default.png",
+                  ],
+
+            title: property.title,
+
+            location: `${property.city}، ${property.district}`,
+
+            district:
+              property.district,
+
+            deposit:
+              property.deposit /
+              1_000_000,
+
+            rent:
+              property.rent /
+              1_000,
+
+            area: property.area,
+
+            bedrooms:
+              property.bedrooms,
+
+            floor:
+              property.floor,
+
+            totalFloors:
+              property.totalFloors,
+
+            yearBuilt:
+              property.yearBuilt,
+
+            type:
+              property.propertyType,
+
+            amenities:
+              property.amenities,
+
+            description:
+              property.description,
+
+            lat:
+              property.latitude,
+
+            lng:
+              property.longitude,
+
+            createdAt:
+              property.createdAt,
+          }),
+        ),
+      [submittedProperties],
+    );
+
+  const allRentProperties =
+    useMemo<Property[]>(
+      () => [
+        ...submittedRentProperties,
+        ...properties,
+      ],
+      [submittedRentProperties],
+    );
+
+  const filteredProperties =
+    useMemo(() => {
+      let result =
+        allRentProperties.filter(
+          (property) => {
+            const normalizedSearch =
+              search.trim();
+
+            const matchesSearch =
+              normalizedSearch.length ===
+                0 ||
+              property.location.includes(
+                normalizedSearch,
+              ) ||
+              property.title.includes(
+                normalizedSearch,
+              );
+
+            const matchesDistrict =
+              district ===
+                "همه مناطق" ||
+              property.district ===
+                district;
+
+            const matchesType =
+              propertyType ===
+                "همه انواع" ||
+              property.type ===
+                propertyType;
+
+            let matchesDeposit =
+              true;
+
+            if (
+              deposit ===
+              "زیر ۵۰۰ میلیون"
+            ) {
+              matchesDeposit =
+                property.deposit <
+                500;
+            }
+
+            if (
+              deposit ===
+              "۵۰۰ میلیون تا ۱ میلیارد"
+            ) {
+              matchesDeposit =
+                property.deposit >=
+                  500 &&
+                property.deposit <=
+                  1000;
+            }
+
+            if (
+              deposit ===
+              "۱ تا ۲ میلیارد"
+            ) {
+              matchesDeposit =
+                property.deposit >
+                  1000 &&
+                property.deposit <=
+                  2000;
+            }
+
+            if (
+              deposit ===
+              "بالای ۲ میلیارد"
+            ) {
+              matchesDeposit =
+                property.deposit >
+                2000;
+            }
+
+            let matchesRent =
+              true;
+
+            if (
+              rent ===
+              "زیر ۱۰ میلیون"
+            ) {
+              matchesRent =
+                property.rent <
+                10;
+            }
+
+            if (
+              rent ===
+              "۱۰ تا ۲۰ میلیون"
+            ) {
+              matchesRent =
+                property.rent >=
+                  10 &&
+                property.rent <=
+                  20;
+            }
+
+            if (
+              rent ===
+              "۲۰ تا ۳۰ میلیون"
+            ) {
+              matchesRent =
+                property.rent > 20 &&
+                property.rent <= 30;
+            }
+
+            if (
+              rent ===
+              "بالای ۳۰ میلیون"
+            ) {
+              matchesRent =
+                property.rent > 30;
+            }
+
+            let matchesArea =
+              true;
+
+            if (
+              area ===
+              "زیر ۸۰ متر"
+            ) {
+              matchesArea =
+                property.area < 80;
+            }
+
+            if (
+              area ===
+              "۸۰ تا ۱۲۰ متر"
+            ) {
+              matchesArea =
+                property.area >=
+                  80 &&
+                property.area <=
+                  120;
+            }
+
+            if (
+              area ===
+              "۱۲۰ تا ۱۵۰ متر"
+            ) {
+              matchesArea =
+                property.area > 120 &&
+                property.area <= 150;
+            }
+
+            if (
+              area ===
+              "بالای ۱۵۰ متر"
+            ) {
+              matchesArea =
+                property.area > 150;
+            }
+
+            let matchesBedroom =
+              true;
+
+            if (
+              bedroom ===
+              "بدون اتاق"
+            ) {
+              matchesBedroom =
+                property.bedrooms ===
+                0;
+            }
+
+            if (
+              bedroom ===
+              "۱ خواب"
+            ) {
+              matchesBedroom =
+                property.bedrooms ===
+                1;
+            }
+
+            if (
+              bedroom ===
+              "۲ خواب"
+            ) {
+              matchesBedroom =
+                property.bedrooms ===
+                2;
+            }
+
+            if (
+              bedroom ===
+              "۳ خواب"
+            ) {
+              matchesBedroom =
+                property.bedrooms ===
+                3;
+            }
+
+            if (
+              bedroom ===
+              "۴ خواب و بیشتر"
+            ) {
+              matchesBedroom =
+                property.bedrooms >=
+                4;
+            }
+
+            let matchesBuildYear =
+              true;
+
+            if (
+              buildYear ===
+              "۱۴۰۳ به بعد"
+            ) {
+              matchesBuildYear =
+                property.yearBuilt >=
+                1403;
+            }
+
+            if (
+              buildYear ===
+              "۱۴۰۰ تا ۱۴۰۲"
+            ) {
+              matchesBuildYear =
+                property.yearBuilt >=
+                  1400 &&
+                property.yearBuilt <=
+                  1402;
+            }
+
+            if (
+              buildYear ===
+              "۱۳۹۵ تا ۱۳۹۹"
+            ) {
+              matchesBuildYear =
+                property.yearBuilt >=
+                  1395 &&
+                property.yearBuilt <=
+                  1399;
+            }
+
+            if (
+              buildYear ===
+              "قبل از ۱۳۹۵"
+            ) {
+              matchesBuildYear =
+                property.yearBuilt < 1395;
+            }
+
+            return (
+              matchesSearch &&
+              matchesDistrict &&
+              matchesType &&
+              matchesDeposit &&
+              matchesRent &&
+              matchesArea &&
+              matchesBedroom &&
+              matchesBuildYear
+            );
+          },
+        );
+
+      if (
+        sort ===
+        "ارزان‌ترین"
+      ) {
+        result = [...result].sort(
+          (a, b) =>
+            a.rent - b.rent,
+        );
       }
 
-      if (price === "۲۰ تا ۳۰ میلیون") {
-        matchesPrice =
-          property.rent >= 20 &&
-          property.rent <= 30;
+      if (
+        sort ===
+        "گران‌ترین"
+      ) {
+        result = [...result].sort(
+          (a, b) =>
+            b.rent - a.rent,
+        );
       }
 
-      if (price === "۳۰ تا ۵۰ میلیون") {
-        matchesPrice =
-          property.rent > 30 &&
-          property.rent <= 50;
+      if (
+        sort ===
+        "متراژ بیشتر"
+      ) {
+        result = [...result].sort(
+          (a, b) =>
+            b.area - a.area,
+        );
       }
 
-      if (price === "بالای ۵۰ میلیون") {
-        matchesPrice = property.rent > 50;
+      if (
+        sort ===
+        "جدیدترین"
+      ) {
+        result = [...result].sort(
+          (a, b) =>
+            b.createdAt -
+            a.createdAt,
+        );
       }
 
-      let matchesArea = true;
-
-      if (area === "زیر ۸۰ متر") {
-        matchesArea = property.area < 80;
-      }
-
-      if (area === "۸۰ تا ۱۲۰ متر") {
-        matchesArea =
-          property.area >= 80 &&
-          property.area <= 120;
-      }
-
-      if (area === "۱۲۰ تا ۱۵۰ متر") {
-        matchesArea =
-          property.area > 120 &&
-          property.area <= 150;
-      }
-
-      if (area === "بالای ۱۵۰ متر") {
-        matchesArea = property.area > 150;
-      }
-
-      return (
-        matchesSearch &&
-        matchesDistrict &&
-        matchesType &&
-        matchesPrice &&
-        matchesArea
-      );
-    });
-
-    if (sort === "ارزان‌ترین") {
-      result = [...result].sort(
-        (a, b) => a.rent - b.rent,
-      );
-    }
-
-    if (sort === "گران‌ترین") {
-      result = [...result].sort(
-        (a, b) => b.rent - a.rent,
-      );
-    }
-
-    if (sort === "جدیدترین") {
-      result = [...result].sort(
-        (a, b) => b.createdAt - a.createdAt,
-      );
-    }
-
-    return result;
-  }, [
-    search,
-    district,
-    propertyType,
-    price,
-    area,
-    sort,
-  ]);
+      return result;
+    }, [
+      allRentProperties,
+      search,
+      district,
+      propertyType,
+      deposit,
+      rent,
+      area,
+      bedroom,
+      buildYear,
+      sort,
+    ]);
 
   const clearFilters = () => {
     setSearch("");
     setDistrict("همه مناطق");
     setPropertyType("همه انواع");
-    setPrice("همه قیمت‌ها");
+    setDeposit("همه ودیعه‌ها");
+    setRent("همه اجاره‌ها");
     setArea("همه متراژها");
+    setBedroom(
+      "همه تعداد اتاق‌ها",
+    );
+    setBuildYear(
+      "همه سال‌ها",
+    );
     setSelectedProperty(null);
   };
 
-  const toggleBookmark = (id: number) => {
-    setBookmarked((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
+  const toggleBookmark = (
+    id: number,
+  ) => {
+    setBookmarked(
+      (current) =>
+        current.includes(id)
+          ? current.filter(
+              (item) =>
+                item !== id,
+            )
+          : [
+              ...current,
+              id,
+            ],
+    );
+  };
+
+  const handlePropertySelect = (
+    property: Property,
+  ) => {
+    setSelectedProperty(
+      property,
+    );
+
+    router.push(
+      `/rent/${property.id}`,
     );
   };
 
@@ -503,7 +819,6 @@ export default function Rent() {
             rounded-xl
             border
             border-gray-5
-            bg-white
             p-4
             shadow-sm
             lg:flex-row
@@ -527,7 +842,11 @@ export default function Rent() {
             <input
               type="search"
               value={search}
-              onChange={(event) => setSearch(event.target.value)}
+              onChange={(event) =>
+                setSearch(
+                  event.target.value,
+                )
+              }
               placeholder="شهر یا محله مورد نظر را اضافه کنید"
               className="
                 h-12
@@ -560,13 +879,15 @@ export default function Rent() {
             <FilterDropdown
               value={propertyType}
               options={propertyTypes}
-              onChange={setPropertyType}
+              onChange={
+                setPropertyType
+              }
             />
 
             <FilterDropdown
-              value={price}
-              options={prices}
-              onChange={setPrice}
+              value={deposit}
+              options={deposits}
+              onChange={setDeposit}
             />
 
             <FilterDropdown
@@ -578,7 +899,10 @@ export default function Rent() {
             <button
               type="button"
               onClick={() =>
-                setShowMoreFilters((current) => !current)
+                setShowMoreFilters(
+                  (current) =>
+                    !current,
+                )
               }
               className="
                 flex
@@ -618,36 +942,65 @@ export default function Rent() {
               shadow-sm
             "
           >
-            <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
-              <div>
-                <h3 className="font-bold text-gray-12">
-                  فیلترهای بیشتر
-                </h3>
+            <div className="flex flex-col gap-5">
+              <div className="flex flex-col gap-4 md:flex-row md:items-center md:justify-between">
+                <div>
+                  <h3 className="font-bold text-gray-12">
+                    فیلترهای بیشتر
+                  </h3>
 
-                <p className="mt-1 text-sm text-gray-8">
-                  برای پیدا کردن ملک مناسب، فیلترهای مورد نظر
-                  خود را انتخاب کنید.
-                </p>
+                  <p className="mt-1 text-sm text-gray-8">
+                    ملک مناسب خود را با جزئیات بیشتری پیدا کنید.
+                  </p>
+                </div>
+
+                <button
+                  type="button"
+                  onClick={
+                    clearFilters
+                  }
+                  className="
+                    flex
+                    items-center
+                    justify-center
+                    gap-2
+                    text-sm
+                    font-bold
+                    text-primary
+                    transition
+                    hover:opacity-70
+                  "
+                >
+                  <FiX />
+                  حذف همه فیلترها
+                </button>
               </div>
 
-              <button
-                type="button"
-                onClick={clearFilters}
-                className="
-                  flex
-                  items-center
-                  justify-center
-                  gap-2
-                  text-sm
-                  font-bold
-                  text-primary
-                  transition
-                  hover:opacity-70
-                "
-              >
-                <FiX />
-                حذف همه فیلترها
-              </button>
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+                <FilterDropdown
+                  value={rent}
+                  options={rents}
+                  onChange={setRent}
+                />
+
+                <FilterDropdown
+                  value={bedroom}
+                  options={bedrooms}
+                  onChange={
+                    setBedroom
+                  }
+                />
+
+                <FilterDropdown
+                  value={buildYear}
+                  options={
+                    buildYears
+                  }
+                  onChange={
+                    setBuildYear
+                  }
+                />
+              </div>
             </div>
           </div>
         )}
@@ -671,19 +1024,25 @@ export default function Rent() {
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
               <h1 className="text-2xl font-bold text-gray-13">
-                املاک اجاره‌ای
+                املاک برای اجاره
               </h1>
 
               <p className="mt-1 text-sm text-gray-8">
-                {filteredProperties.length.toLocaleString("fa-IR")} مورد
-                یافت شد
+                {filteredProperties.length.toLocaleString(
+                  "fa-IR",
+                )}{" "}
+                مورد یافت شد
               </p>
             </div>
 
-            <div className="relative w-full sm:w-[160px]">
+            <div className="relative w-full sm:w-[175px]">
               <select
                 value={sort}
-                onChange={(event) => setSort(event.target.value)}
+                onChange={(event) =>
+                  setSort(
+                    event.target.value,
+                  )
+                }
                 className="
                   h-11
                   w-full
@@ -700,9 +1059,21 @@ export default function Rent() {
                   focus:border-primary
                 "
               >
-                <option value="جدیدترین">جدیدترین</option>
-                <option value="ارزان‌ترین">ارزان‌ترین</option>
-                <option value="گران‌ترین">گران‌ترین</option>
+                <option value="جدیدترین">
+                  جدیدترین
+                </option>
+
+                <option value="ارزان‌ترین">
+                  ارزان‌ترین
+                </option>
+
+                <option value="گران‌ترین">
+                  گران‌ترین
+                </option>
+
+                <option value="متراژ بیشتر">
+                  متراژ بیشتر
+                </option>
               </select>
 
               <FiChevronDown
@@ -720,17 +1091,30 @@ export default function Rent() {
             </div>
           </div>
 
-          {filteredProperties.length > 0 ? (
+          {filteredProperties.length >
+          0 ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {filteredProperties.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  bookmarked={bookmarked.includes(property.id)}
-                  onBookmark={toggleBookmark}
-                  onSelect={setSelectedProperty}
-                />
-              ))}
+              {filteredProperties.map(
+                (property) => (
+                  <PropertyCard
+                    key={
+                      property.id
+                    }
+                    property={
+                      property
+                    }
+                    bookmarked={bookmarked.includes(
+                      property.id,
+                    )}
+                    onBookmark={
+                      toggleBookmark
+                    }
+                    onSelect={
+                      handlePropertySelect
+                    }
+                  />
+                ),
+              )}
             </div>
           ) : (
             <div
@@ -760,7 +1144,9 @@ export default function Rent() {
 
               <button
                 type="button"
-                onClick={clearFilters}
+                onClick={
+                  clearFilters
+                }
                 className="
                   mt-5
                   rounded-md
@@ -819,9 +1205,15 @@ export default function Rent() {
 
             <div className="h-[350px] sm:h-[450px] lg:h-[751px]">
               <RentMap
-                properties={filteredProperties}
-                selectedProperty={selectedProperty}
-                onSelectProperty={setSelectedProperty}
+                properties={
+                  filteredProperties
+                }
+                selectedProperty={
+                  selectedProperty
+                }
+                onSelectProperty={
+                  handlePropertySelect
+                }
               />
             </div>
 
@@ -830,8 +1222,13 @@ export default function Rent() {
                 <div className="flex items-center gap-3">
                   <div className="relative h-16 w-20 shrink-0 overflow-hidden rounded-md">
                     <Image
-                      src={selectedProperty.image}
-                      alt={selectedProperty.title}
+                      src={
+                        selectedProperty.image ||
+                        "/images/default.png"
+                      }
+                      alt={
+                        selectedProperty.title
+                      }
                       fill
                       sizes="80px"
                       className="object-cover"
@@ -840,18 +1237,34 @@ export default function Rent() {
 
                   <div className="min-w-0">
                     <h3 className="truncate font-bold text-gray-12">
-                      {selectedProperty.title}
+                      {
+                        selectedProperty.title
+                      }
                     </h3>
 
                     <p className="mt-1 text-xs text-gray-8">
-                      {selectedProperty.area.toLocaleString("fa-IR")} متر،
-                      {" "}
-                      {selectedProperty.location}
+                      {selectedProperty.area.toLocaleString(
+                        "fa-IR",
+                      )}{" "}
+                      متر،{" "}
+                      {
+                        selectedProperty.location
+                      }
                     </p>
 
                     <p className="mt-1 text-xs font-bold text-primary">
-                      {selectedProperty.rent.toLocaleString("fa-IR")} میلیون
-                      تومان اجاره
+                      ودیعه{" "}
+                      {formatPrice(
+                        selectedProperty.deposit,
+                      )}
+                    </p>
+
+                    <p className="mt-1 text-xs font-bold text-gray-11">
+                      اجاره{" "}
+                      {selectedProperty.rent.toLocaleString(
+                        "fa-IR",
+                      )}{" "}
+                      میلیون تومان
                     </p>
                   </div>
                 </div>
@@ -860,37 +1273,7 @@ export default function Rent() {
           </div>
         </section>
       </main>
-
-      <section className="mx-auto mb-16 w-full max-w-[1224px] px-4 md:px-6 lg:px-0">
-        <div className="rounded-xl bg-gray-4/60 p-4 md:p-6">
-          <div className="mb-5 flex items-center gap-3">
-            <span className="h-8 w-1.5 rounded-full bg-primary" />
-
-            <h2 className="text-xl font-bold text-gray-12 md:text-2xl">
-              دفاتر املاک مرتبط
-            </h2>
-          </div>
-
-          <div
-            className="
-              flex
-              gap-3
-              overflow-x-auto
-              pb-2
-              lg:grid
-              lg:grid-cols-4
-              lg:overflow-visible
-            "
-          >
-            {offices.map((office) => (
-              <OfficeCard
-                key={office.id}
-                office={office}
-              />
-            ))}
-          </div>
-        </div>
-      </section>
     </div>
   );
 }
+

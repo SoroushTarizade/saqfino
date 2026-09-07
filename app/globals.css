@@ -1,5 +1,5 @@
 @import "tailwindcss";
-
+@import "leaflet/dist/leaflet.css";
 /* =========================================================
 Shabnam Font
 Available weights:
@@ -445,4 +445,41 @@ Mobile
   border-left: 7px solid transparent;
   border-right: 7px solid transparent;
   border-top: 8px solid var(--color-primary);
+}
+
+
+
+.custom-submit-marker {
+  background: transparent;
+  border: none;
+}
+
+.submit-map-marker {
+  position: relative;
+  width: 34px;
+  height: 34px;
+  border-radius: 50% 50% 50% 0;
+  background: var(--color-primary);
+  transform: rotate(-45deg);
+  box-shadow: 0 4px 12px rgb(0 0 0 / 20%);
+}
+
+.submit-map-marker span {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  width: 10px;
+  height: 10px;
+  border-radius: 9999px;
+  background: white;
+  transform: translate(-50%, -50%);
+}
+@media (max-width: 1023px) {
+  header {
+    z-index: 1000;
+  }
+
+  .leaflet-container {
+    z-index: 0;
+  }
 }

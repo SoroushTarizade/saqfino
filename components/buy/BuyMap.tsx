@@ -1,7 +1,7 @@
 "use client";
 
 import "leaflet/dist/leaflet.css";
-
+import { formatPrice } from "@/lib/formatPrice";
 import L from "leaflet";
 import { useEffect } from "react";
 import {
@@ -114,7 +114,7 @@ function BuyMap({
                 <div className="mt-2 space-y-1 text-xs">
                   <p>
                     قیمت کل:{" "}
-                    {property.price.toLocaleString("fa-IR")} میلیون تومان
+                    {formatPrice(property.price)}
                   </p>
 
                   <p>
