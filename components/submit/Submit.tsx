@@ -1,3 +1,4 @@
+
 "use client";
 
 import dynamic from "next/dynamic";
@@ -21,11 +22,6 @@ import {
   FiTrash2,
   FiUploadCloud,
 } from "react-icons/fi";
-
-import {
-  saveSubmittedProperty,
-  SubmittedProperty,
-} from "@/lib/submittedProperties";
 
 const SubmitMap = dynamic(
   () => import("./SubmitMap"),
@@ -125,13 +121,11 @@ const propertyTypes = [
   },
   {
     title: "زمین",
-    description:
-      "زمین مسکونی یا تجاری",
+    description: "زمین مسکونی یا تجاری",
   },
   {
     title: "تجاری",
-    description:
-      "مغازه، دفتر و ملک تجاری",
+    description: "مغازه، دفتر و ملک تجاری",
   },
 ] as const;
 
@@ -186,9 +180,7 @@ const persianDigits = [
   "۹",
 ];
 
-function toPersianDigits(
-  value: string,
-) {
+function toPersianDigits(value: string) {
   return value.replace(
     /\d/g,
     (digit) =>
@@ -196,9 +188,7 @@ function toPersianDigits(
   );
 }
 
-function normalizeDigits(
-  value: string,
-) {
+function normalizeDigits(value: string) {
   return value
     .replace(
       /[۰-۹]/g,
@@ -213,9 +203,7 @@ function normalizeDigits(
     .replace(/\D/g, "");
 }
 
-function formatNumber(
-  value: string,
-) {
+function formatNumber(value: string) {
   const normalized =
     normalizeDigits(value);
 
@@ -236,9 +224,7 @@ function formatNumber(
  *
  * هیچ گرد کردنی انجام نمی‌شود.
  */
-function numberToExactText(
-  value: string,
-) {
+function numberToExactText(value: string) {
   const normalized =
     normalizeDigits(value);
 
@@ -289,8 +275,7 @@ function numberToExactText(
           String(numeric),
         ),
         label:
-          unitLabels[power] ??
-          "",
+          unitLabels[power] ?? "",
       });
     },
   );
@@ -308,9 +293,7 @@ function numberToExactText(
     .join(" و ")} تومان`;
 }
 
-function parseNumericValue(
-  value: string,
-) {
+function parseNumericValue(value: string) {
   return Number(
     normalizeDigits(value) || "0",
   );
@@ -339,6 +322,16 @@ export default function Submit() {
 
   const [errors, setErrors] =
     useState<FormErrors>({});
+
+  const [
+    isSubmitting,
+    setIsSubmitting,
+  ] = useState(false);
+
+  const [
+    submitError,
+    setSubmitError,
+  ] = useState("");
 
   const progress =
     ((currentStep + 1) /
@@ -395,15 +388,13 @@ export default function Submit() {
 
   function handleTextChange(
     event: ChangeEvent<
-      | HTMLInputElement
-      | HTMLTextAreaElement
+      HTMLInputElement | HTMLTextAreaElement
     >,
     field: keyof FormData,
   ) {
     updateField(
       field,
-      event.target
-        .value as never,
+      event.target.value as never,
     );
   }
 
@@ -568,8 +559,7 @@ export default function Submit() {
       }
 
       if (
-        formData.bedrooms ===
-        ""
+        formData.bedrooms === ""
       ) {
         nextErrors.bedrooms =
           "تعداد اتاق را وارد کنید.";
@@ -653,8 +643,6 @@ export default function Submit() {
         nextErrors.description =
           "توضیحات حداقل باید ۲۰ کاراکتر باشد.";
       }
-
-      // تصاویر دیگر اجباری نیستند.
     }
 
     if (step === 5) {
@@ -719,132 +707,160 @@ export default function Submit() {
     );
   }
 
-  function handleSubmit() {
+  async function handleSubmit() {
+    if (isSubmitting) {
+      return;
+    }
+
+    const stepsToValidate = [
+      0,
+      1,
+      2,
+      4,
+      5,
+    ];
+
+    for (const step of stepsToValidate) {
+      if (!validateStep(step)) {
+        setCurrentStep(step);
+        return;
+      }
+    }
+
     if (
       !formData.transactionType ||
       !formData.propertyType ||
-      formData.latitude ===
-        null ||
-      formData.longitude ===
-        null
+      formData.latitude === null ||
+      formData.longitude === null
     ) {
       return;
     }
 
-    const fallbackImage =
-      "/images/default.png";
+    setIsSubmitting(true);
+    setSubmitError("");
 
-    /*
-     * blob URL فقط در مرورگر فعلی معتبر است.
-     * برای نسخه Portfolio فعلی از آن استفاده
-     * می‌کنیم. هنگام اتصال backend تصاویر
-     * باید واقعاً upload شوند.
-     */
-    const uploadedImages =
-      images.map(
-        (image) =>
-          image.preview,
+    try {
+      const response = await fetch(
+        "/api/properties",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            transactionType:
+              formData.transactionType ===
+              "فروش"
+                ? "buy"
+                : "rent",
+
+            propertyType:
+              formData.propertyType ===
+              "آپارتمان"
+                ? "apartment"
+                : formData.propertyType ===
+                    "خانه"
+                  ? "house"
+                  : formData.propertyType ===
+                      "ویلا"
+                    ? "villa"
+                    : formData.propertyType ===
+                        "زمین"
+                      ? "land"
+                      : "commercial",
+
+            title:
+              formData.title.trim(),
+
+            description:
+              formData.description.trim(),
+
+            area:
+              parseNumericValue(
+                formData.area,
+              ),
+
+            bedrooms:
+              parseNumericValue(
+                formData.bedrooms,
+              ),
+
+            floor:
+              parseNumericValue(
+                formData.floor,
+              ),
+
+            totalFloors:
+              parseNumericValue(
+                formData.totalFloors,
+              ),
+
+            yearBuilt:
+              parseNumericValue(
+                formData.yearBuilt,
+              ),
+
+            salePrice:
+              parseNumericValue(
+                formData.salePrice,
+              ),
+
+            deposit:
+              parseNumericValue(
+                formData.deposit,
+              ),
+
+            rent:
+              parseNumericValue(
+                formData.rent,
+              ),
+
+            amenities:
+              formData.amenities,
+
+            city:
+              formData.city.trim(),
+
+            district:
+              formData.district.trim(),
+
+            latitude:
+              formData.latitude,
+
+            longitude:
+              formData.longitude,
+          }),
+        },
       );
 
-    const primaryImage =
-      mainImage?.preview ??
-      fallbackImage;
+      const data =
+        await response.json();
 
-    const property: SubmittedProperty =
-      {
-        id: Date.now(),
+      if (!response.ok) {
+        setSubmitError(
+          data.message ||
+            "ثبت آگهی انجام نشد.",
+        );
 
-        transactionType:
-          formData.transactionType,
+        return;
+      }
 
-        propertyType:
-          formData.propertyType,
+      router.push("/profile/ads");
+    } catch (error) {
+      console.error(
+        "Submit property error:",
+        error,
+      );
 
-        title:
-          formData.title.trim(),
-
-        description:
-          formData.description.trim(),
-
-        area:
-          parseNumericValue(
-            formData.area,
-          ),
-
-        bedrooms:
-          parseNumericValue(
-            formData.bedrooms,
-          ),
-
-        floor:
-          parseNumericValue(
-            formData.floor,
-          ),
-
-        totalFloors:
-          parseNumericValue(
-            formData.totalFloors,
-          ),
-
-        yearBuilt:
-          parseNumericValue(
-            formData.yearBuilt,
-          ),
-
-        salePrice:
-          parseNumericValue(
-            formData.salePrice,
-          ),
-
-        deposit:
-          parseNumericValue(
-            formData.deposit,
-          ),
-
-        rent:
-          parseNumericValue(
-            formData.rent,
-          ),
-
-        amenities:
-          formData.amenities,
-
-        city:
-          formData.city.trim(),
-
-        district:
-          formData.district.trim(),
-
-        latitude:
-          formData.latitude,
-
-        longitude:
-          formData.longitude,
-
-        image: primaryImage,
-
-        images:
-          uploadedImages.length
-            ? uploadedImages
-            : [fallbackImage],
-
-        createdAt:
-          Date.now(),
-      };
-
-    saveSubmittedProperty(
-      property,
-    );
-
-    if (
-      property.transactionType ===
-      "فروش"
-    ) {
-      router.push("/buy");
-      return;
+      setSubmitError(
+        "ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.",
+      );
+    } finally {
+      setIsSubmitting(false);
     }
-
-    router.push("/rent");
   }
 
   return (
@@ -1075,8 +1091,7 @@ export default function Submit() {
                       updateField(
                         "area",
                         formatNumber(
-                          event
-                            .target
+                          event.target
                             .value,
                         ),
                       )
@@ -1103,8 +1118,7 @@ export default function Submit() {
                       updateField(
                         "bedrooms",
                         normalizeDigits(
-                          event
-                            .target
+                          event.target
                             .value,
                         ),
                       )
@@ -1131,8 +1145,7 @@ export default function Submit() {
                       updateField(
                         "floor",
                         normalizeDigits(
-                          event
-                            .target
+                          event.target
                             .value,
                         ),
                       )
@@ -1159,8 +1172,7 @@ export default function Submit() {
                       updateField(
                         "totalFloors",
                         normalizeDigits(
-                          event
-                            .target
+                          event.target
                             .value,
                         ),
                       )
@@ -1187,8 +1199,7 @@ export default function Submit() {
                       updateField(
                         "yearBuilt",
                         normalizeDigits(
-                          event
-                            .target
+                          event.target
                             .value,
                         ),
                       )
@@ -1790,12 +1801,20 @@ export default function Submit() {
             </>
           )}
 
+          {/* SUBMIT ERROR */}
+          {submitError && (
+            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
+              {submitError}
+            </div>
+          )}
+
           {/* NAV */}
           <div className="mt-8 flex justify-between border-t pt-6">
             <button
               type="button"
               disabled={
-                currentStep === 0
+                currentStep === 0 ||
+                isSubmitting
               }
               onClick={
                 handlePrevious
@@ -1822,10 +1841,16 @@ export default function Submit() {
                 onClick={
                   handleSubmit
                 }
-                className="flex h-12 items-center gap-2 rounded-xl bg-green-600 px-6 font-bold text-white"
+                disabled={
+                  isSubmitting
+                }
+                className="flex h-12 items-center gap-2 rounded-xl bg-green-600 px-6 font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
               >
                 <FiCheck />
-                ثبت نهایی آگهی
+
+                {isSubmitting
+                  ? "در حال ثبت..."
+                  : "ثبت نهایی آگهی"}
               </button>
             )}
           </div>
@@ -2023,3 +2048,4 @@ function PreviewBox({
     </div>
   );
 }
+
