@@ -1,39 +1,32 @@
-
 "use client";
 
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-
 import {
   ChangeEvent,
   ReactNode,
+  useEffect,
   useMemo,
   useState,
 } from "react";
-
 import {
   FiArrowLeft,
   FiArrowRight,
   FiCheck,
   FiHome,
+  FiImage,
   FiKey,
   FiMapPin,
   FiTrash2,
   FiUploadCloud,
 } from "react-icons/fi";
 
-const SubmitMap = dynamic(
-  () => import("./SubmitMap"),
-  {
-    ssr: false,
-  },
-);
+const SubmitMap = dynamic(() => import("./SubmitMap"), {
+  ssr: false,
+});
 
-type TransactionType =
-  | "فروش"
-  | "اجاره"
-  | null;
+type TransactionType = "فروش" | "اجاره" | null;
 
 type PropertyType =
   | "آپارتمان"
@@ -71,30 +64,31 @@ type FormData = {
   city: string;
   district: string;
 
-  latitude: number | null;
-  longitude: number | null;
+  latitude: number;
+  longitude: number;
 };
 
-type FormErrors = Partial<
-  Record<
-    | "transactionType"
-    | "propertyType"
-    | "area"
-    | "bedrooms"
-    | "floor"
-    | "totalFloors"
-    | "yearBuilt"
-    | "salePrice"
-    | "deposit"
-    | "rent"
-    | "title"
-    | "description"
-    | "city"
-    | "district"
-    | "location",
-    string
-  >
->;
+type FormErrors = {
+  transactionType?: string;
+  propertyType?: string;
+
+  area?: string;
+  bedrooms?: string;
+  floor?: string;
+  totalFloors?: string;
+  yearBuilt?: string;
+
+  salePrice?: string;
+  deposit?: string;
+  rent?: string;
+
+  title?: string;
+  description?: string;
+
+  city?: string;
+  district?: string;
+  location?: string;
+};
 
 const steps = [
   "نوع آگهی",
@@ -106,28 +100,31 @@ const steps = [
   "پیش‌نمایش",
 ];
 
-const propertyTypes = [
+const propertyTypes: {
+  title: Exclude<PropertyType, null>;
+  icon: ReactNode;
+}[] = [
   {
     title: "آپارتمان",
-    description: "واحد آپارتمانی",
+    icon: <FiHome size={22} />,
   },
   {
     title: "خانه",
-    description: "خانه مستقل",
+    icon: <FiHome size={22} />,
   },
   {
     title: "ویلا",
-    description: "ویلا و باغ‌ویلا",
+    icon: <FiHome size={22} />,
   },
   {
     title: "زمین",
-    description: "زمین مسکونی یا تجاری",
+    icon: <FiMapPin size={22} />,
   },
   {
     title: "تجاری",
-    description: "مغازه، دفتر و ملک تجاری",
+    icon: <FiKey size={22} />,
   },
-] as const;
+];
 
 const amenities = [
   "پارکینگ",
@@ -163,1812 +160,2052 @@ const initialFormData: FormData = {
   city: "",
   district: "",
 
-  latitude: null,
-  longitude: null,
+  latitude: 35.7219,
+  longitude: 51.3347,
 };
 
-const persianDigits = [
-  "۰",
-  "۱",
-  "۲",
-  "۳",
-  "۴",
-  "۵",
-  "۶",
-  "۷",
-  "۸",
-  "۹",
-];
-
-function toPersianDigits(value: string) {
-  return value.replace(
+function toPersianDigits(value: string | number) {
+  return String(value).replace(
     /\d/g,
-    (digit) =>
-      persianDigits[Number(digit)],
+    (digit) => "۰۱۲۳۴۵۶۷۸۹"[Number(digit)]
   );
 }
 
 function normalizeDigits(value: string) {
   return value
-    .replace(
-      /[۰-۹]/g,
-      (digit) =>
-        String(
-          "۰۱۲۳۴۵۶۷۸۹".indexOf(
-            digit,
-          ),
-        ),
+    .replace(/[۰-۹]/g, (digit) =>
+      String("۰۱۲۳۴۵۶۷۸۹".indexOf(digit))
     )
-    .replace(/[٬,./]/g, "")
-    .replace(/\D/g, "");
-}
-
-function formatNumber(value: string) {
-  const normalized =
-    normalizeDigits(value);
-
-  if (!normalized) {
-    return "";
-  }
-
-  return normalized.replace(
-    /\B(?=(\d{3})+(?!\d))/g,
-    ",",
-  );
-}
-
-/**
- * 12,540,000,000
- * =>
- * ۱۲ میلیارد و ۵۴۰ میلیون تومان
- *
- * هیچ گرد کردنی انجام نمی‌شود.
- */
-function numberToExactText(value: string) {
-  const normalized =
-    normalizeDigits(value);
-
-  if (!normalized) {
-    return "";
-  }
-
-  const groups: {
-    value: string;
-    label: string;
-  }[] = [];
-
-  const padded =
-    normalized.padStart(
-      Math.ceil(normalized.length / 3) *
-        3,
-      "0",
+    .replace(/[٠-٩]/g, (digit) =>
+      String("٠١٢٣٤٥٦٧٨٩".indexOf(digit))
     );
+}
 
-  const chunks =
-    padded.match(/.{1,3}/g) ?? [];
+function cleanNumber(value: string) {
+  return normalizeDigits(value).replace(/[^\d]/g, "");
+}
 
-  const unitLabels = [
+function formatNumber(value: string | number) {
+  const normalized = cleanNumber(String(value));
+
+  if (!normalized) {
+    return "";
+  }
+
+  return Number(normalized).toLocaleString("en-US");
+}
+
+function formatPersianNumber(value: string | number) {
+  const formatted = formatNumber(value);
+
+  if (!formatted) {
+    return "";
+  }
+
+  return toPersianDigits(formatted);
+}
+
+function numberToExactText(value: string) {
+  const normalized = cleanNumber(value);
+
+  if (!normalized) {
+    return "";
+  }
+
+  const number = Number(normalized);
+
+  if (!Number.isFinite(number)) {
+    return "";
+  }
+
+  const units = [
     "",
     "هزار",
     "میلیون",
     "میلیارد",
     "تریلیون",
-    "هزار تریلیون",
   ];
 
-  chunks.forEach(
-    (chunk, index) => {
-      const numeric =
-        Number(chunk);
+  let amount = number;
+  let unitIndex = 0;
 
-      if (!numeric) {
-        return;
-      }
-
-      const power =
-        chunks.length -
-        index -
-        1;
-
-      groups.push({
-        value: toPersianDigits(
-          String(numeric),
-        ),
-        label:
-          unitLabels[power] ?? "",
-      });
-    },
-  );
-
-  if (!groups.length) {
-    return "۰ تومان";
+  while (amount >= 1000 && unitIndex < units.length - 1) {
+    amount /= 1000;
+    unitIndex += 1;
   }
 
-  return `${groups
-    .map((group) =>
-      group.label
-        ? `${group.value} ${group.label}`
-        : group.value,
-    )
-    .join(" و ")} تومان`;
+  const rounded =
+    amount % 1 === 0
+      ? amount.toLocaleString("fa-IR")
+      : amount.toLocaleString("fa-IR", {
+          maximumFractionDigits: 2,
+        });
+
+  if (unitIndex === 0) {
+    return toPersianDigits(
+      number.toLocaleString("en-US")
+    );
+  }
+
+  return `${rounded} ${units[unitIndex]}`;
 }
 
-function parseNumericValue(value: string) {
-  return Number(
-    normalizeDigits(value) || "0",
-  );
+function getTransactionLabel(
+  transactionType: TransactionType
+) {
+  if (transactionType === "فروش") {
+    return "فروش";
+  }
+
+  if (transactionType === "اجاره") {
+    return "اجاره";
+  }
+
+  return "انتخاب نشده";
+}
+
+function getPropertyLabel(propertyType: PropertyType) {
+  return propertyType || "انتخاب نشده";
 }
 
 export default function Submit() {
   const router = useRouter();
 
-  const [currentStep, setCurrentStep] =
-    useState(0);
+  const [currentStep, setCurrentStep] = useState(0);
 
   const [formData, setFormData] =
-    useState<FormData>(
-      initialFormData,
-    );
+    useState<FormData>(initialFormData);
 
-  const [images, setImages] =
-    useState<ImageItem[]>([]);
+  const [images, setImages] = useState<ImageItem[]>([]);
 
-  const [
-    mainImageId,
-    setMainImageId,
-  ] = useState<string | null>(
-    null,
-  );
+  const [mainImageId, setMainImageId] =
+    useState<string | null>(null);
 
   const [errors, setErrors] =
     useState<FormErrors>({});
 
-  const [
-    isSubmitting,
-    setIsSubmitting,
-  ] = useState(false);
+  const [isSubmitting, setIsSubmitting] =
+    useState(false);
 
-  const [
-    submitError,
-    setSubmitError,
-  ] = useState("");
+  const [submitError, setSubmitError] =
+    useState("");
 
-  const progress =
-    ((currentStep + 1) /
-      steps.length) *
-    100;
+  /*
+   * وقتی کامپوننت unmount شود، object URL های تصاویر
+   * آزاد می‌شوند تا memory leak ایجاد نشود.
+   */
+  useEffect(() => {
+    return () => {
+      images.forEach((image) => {
+        URL.revokeObjectURL(image.preview);
+      });
+    };
+  }, [images]);
 
-  const mainImage =
-    useMemo(() => {
-      if (!images.length) {
-        return null;
-      }
-
-      if (!mainImageId) {
-        return images[0];
-      }
-
-      return (
-        images.find(
-          (image) =>
-            image.id ===
-            mainImageId,
-        ) ?? images[0]
+  const selectedMainImage = useMemo(() => {
+    if (mainImageId) {
+      const selected = images.find(
+        (image) => image.id === mainImageId
       );
-    }, [
-      images,
-      mainImageId,
-    ]);
 
-  function updateField<
-    K extends keyof FormData,
-  >(
-    field: K,
-    value: FormData[K],
-  ) {
-    setFormData(
-      (previous) => ({
-        ...previous,
-        [field]: value,
-      }),
-    );
+      if (selected) {
+        return selected;
+      }
+    }
 
-    setErrors((previous) => {
-      const next = {
-        ...previous,
-      };
+    return images[0] ?? null;
+  }, [images, mainImageId]);
 
-      delete next[
-        field as keyof FormErrors
-      ];
-
-      return next;
-    });
-  }
-
-  function handleTextChange(
-    event: ChangeEvent<
-      HTMLInputElement | HTMLTextAreaElement
-    >,
-    field: keyof FormData,
-  ) {
-    updateField(
-      field,
-      event.target.value as never,
-    );
-  }
-
-  function handlePriceChange(
-    event: ChangeEvent<HTMLInputElement>,
-    field:
-      | "salePrice"
-      | "deposit"
-      | "rent",
-  ) {
-    updateField(
-      field,
-      formatNumber(
-        event.target.value,
-      ),
-    );
-  }
-
-  function toggleAmenity(
-    amenity: string,
-  ) {
+  const updateFormData = <K extends keyof FormData>(
+    key: K,
+    value: FormData[K]
+  ) => {
     setFormData((previous) => ({
       ...previous,
-
-      amenities:
-        previous.amenities.includes(
-          amenity,
-        )
-          ? previous.amenities.filter(
-              (item) =>
-                item !== amenity,
-            )
-          : [
-              ...previous.amenities,
-              amenity,
-            ],
+      [key]: value,
     }));
-  }
 
-  function handleImageUpload(
-    event: ChangeEvent<HTMLInputElement>,
-  ) {
-    const selected =
-      Array.from(
-        event.target.files ??
-          [],
-      );
-
-    if (!selected.length) {
-      return;
-    }
-
-    const freeSlots =
-      10 - images.length;
-
-    const validFiles =
-      selected
-        .filter(
-          (file) =>
-            file.type.startsWith(
-              "image/",
-            ) &&
-            file.size <=
-              5 *
-                1024 *
-                1024,
-        )
-        .slice(0, freeSlots);
-
-    const newImages =
-      validFiles.map(
-        (file) => ({
-          id: `${Date.now()}-${Math.random()}-${file.name}`,
-
-          file,
-
-          preview:
-            URL.createObjectURL(
-              file,
-            ),
-        }),
-      );
-
-    setImages((previous) => [
+    setErrors((previous) => ({
       ...previous,
-      ...newImages,
-    ]);
+      [key]: undefined,
+    }));
 
-    if (
-      !mainImageId &&
-      newImages[0]
-    ) {
-      setMainImageId(
-        newImages[0].id,
-      );
-    }
+    setSubmitError("");
+  };
 
-    event.target.value = "";
-  }
+  const handleNumberChange =
+    (key: keyof FormData) =>
+    (event: ChangeEvent<HTMLInputElement>) => {
+      const value = cleanNumber(event.target.value);
 
-  function removeImage(
-    id: string,
-  ) {
-    const target =
-      images.find(
-        (image) =>
-          image.id === id,
-      );
+      updateFormData(key, value);
+    };
 
-    if (target) {
-      URL.revokeObjectURL(
-        target.preview,
-      );
-    }
-
-    const remaining =
-      images.filter(
-        (image) =>
-          image.id !== id,
-      );
-
-    setImages(remaining);
-
-    if (mainImageId === id) {
-      setMainImageId(
-        remaining[0]?.id ??
-          null,
-      );
-    }
-  }
-
-  function validateStep(
-    step: number,
-  ) {
-    const nextErrors: FormErrors =
-      {};
+  const validateStep = (step: number) => {
+    const nextErrors: FormErrors = {};
 
     if (step === 0) {
-      if (
-        !formData.transactionType
-      ) {
+      if (!formData.transactionType) {
         nextErrors.transactionType =
-          "نوع آگهی را انتخاب کنید.";
+          "لطفاً نوع آگهی را انتخاب کنید.";
       }
 
-      if (
-        !formData.propertyType
-      ) {
+      if (!formData.propertyType) {
         nextErrors.propertyType =
-          "نوع ملک را انتخاب کنید.";
+          "لطفاً نوع ملک را انتخاب کنید.";
       }
     }
 
     if (step === 1) {
-      if (
-        parseNumericValue(
-          formData.area,
-        ) <= 0
-      ) {
+      if (!formData.area) {
+        nextErrors.area = "متراژ را وارد کنید.";
+      } else if (Number(formData.area) <= 0) {
         nextErrors.area =
-          "متراژ را وارد کنید.";
+          "متراژ باید بیشتر از صفر باشد.";
       }
 
-      if (
-        formData.bedrooms === ""
-      ) {
+      if (!formData.bedrooms) {
         nextErrors.bedrooms =
-          "تعداد اتاق را وارد کنید.";
+          "تعداد اتاق خواب را وارد کنید.";
       }
 
       if (
-        formData.floor === ""
+        formData.floor &&
+        formData.totalFloors &&
+        Number(formData.floor) >
+          Number(formData.totalFloors)
       ) {
         nextErrors.floor =
-          "طبقه را وارد کنید.";
-      }
-
-      if (
-        parseNumericValue(
-          formData.totalFloors,
-        ) <= 0
-      ) {
-        nextErrors.totalFloors =
-          "تعداد کل طبقات را وارد کنید.";
-      }
-
-      const year =
-        parseNumericValue(
-          formData.yearBuilt,
-        );
-
-      if (
-        year < 1300 ||
-        year > 1405
-      ) {
-        nextErrors.yearBuilt =
-          "سال ساخت معتبر وارد کنید.";
+          "طبقه نمی‌تواند بیشتر از تعداد طبقات ساختمان باشد.";
       }
     }
 
     if (step === 2) {
-      if (
-        formData.transactionType ===
-          "فروش" &&
-        parseNumericValue(
-          formData.salePrice,
-        ) <= 0
-      ) {
-        nextErrors.salePrice =
-          "قیمت فروش را وارد کنید.";
+      if (formData.transactionType === "فروش") {
+        if (!formData.salePrice) {
+          nextErrors.salePrice =
+            "قیمت فروش را وارد کنید.";
+        }
       }
 
-      if (
-        formData.transactionType ===
-        "اجاره"
-      ) {
-        if (
-          formData.deposit ===
-          ""
-        ) {
+      if (formData.transactionType === "اجاره") {
+        if (!formData.deposit) {
           nextErrors.deposit =
-            "ودیعه را وارد کنید.";
+            "مبلغ ودیعه را وارد کنید.";
         }
 
-        if (
-          formData.rent === ""
-        ) {
+        if (!formData.rent) {
           nextErrors.rent =
-            "اجاره ماهانه را وارد کنید.";
+            "مبلغ اجاره ماهانه را وارد کنید.";
         }
       }
     }
 
     if (step === 4) {
-      if (
-        !formData.title.trim()
-      ) {
+      if (!formData.title.trim()) {
         nextErrors.title =
           "عنوان آگهی را وارد کنید.";
       }
 
-      if (
-        formData.description
-          .trim().length < 20
-      ) {
+      if (!formData.description.trim()) {
         nextErrors.description =
-          "توضیحات حداقل باید ۲۰ کاراکتر باشد.";
+          "توضیحات آگهی را وارد کنید.";
       }
     }
 
     if (step === 5) {
-      if (
-        !formData.city.trim()
-      ) {
+      if (!formData.city.trim()) {
         nextErrors.city =
-          "شهر را وارد کنید.";
+          "لطفاً شهر را وارد کنید.";
       }
 
-      if (
-        !formData.district.trim()
-      ) {
+      if (!formData.district.trim()) {
         nextErrors.district =
-          "محله را وارد کنید.";
+          "لطفاً منطقه یا محله را وارد کنید.";
       }
 
       if (
-        formData.latitude ===
-          null ||
-        formData.longitude ===
-          null
+        !Number.isFinite(formData.latitude) ||
+        !Number.isFinite(formData.longitude)
       ) {
         nextErrors.location =
-          "موقعیت را روی نقشه انتخاب کنید.";
+          "لطفاً موقعیت ملک را روی نقشه مشخص کنید.";
       }
     }
 
     setErrors(nextErrors);
 
-    return (
-      Object.keys(nextErrors)
-        .length === 0
-    );
-  }
+    return Object.keys(nextErrors).length === 0;
+  };
 
-  function handleNext() {
-    if (
-      !validateStep(
-        currentStep,
-      )
-    ) {
+  const handleNext = () => {
+    if (!validateStep(currentStep)) {
       return;
     }
 
-    setCurrentStep(
-      (previous) =>
-        Math.min(
-          previous + 1,
-          steps.length - 1,
-        ),
+    setCurrentStep((previous) =>
+      Math.min(previous + 1, steps.length - 1)
     );
-  }
 
-  function handlePrevious() {
-    setCurrentStep(
-      (previous) =>
-        Math.max(
-          previous - 1,
-          0,
-        ),
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const handlePrevious = () => {
+    setCurrentStep((previous) =>
+      Math.max(previous - 1, 0)
     );
-  }
 
-  async function handleSubmit() {
-    if (isSubmitting) {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const handleStepClick = (index: number) => {
+    if (index >= currentStep) {
       return;
     }
 
-    const stepsToValidate = [
-      0,
-      1,
-      2,
-      4,
-      5,
-    ];
+    setCurrentStep(index);
 
-    for (const step of stepsToValidate) {
+    window.scrollTo({
+      top: 0,
+      behavior: "smooth",
+    });
+  };
+
+  const handleImageUpload = (
+    event: ChangeEvent<HTMLInputElement>
+  ) => {
+    const files = Array.from(event.target.files ?? []);
+
+    if (!files.length) {
+      return;
+    }
+
+    const availableSlots = 10 - images.length;
+
+    const selectedFiles = files
+      .slice(0, availableSlots)
+      .filter((file) => {
+        const validType = [
+          "image/jpeg",
+          "image/png",
+          "image/webp",
+        ].includes(file.type);
+
+        const validSize =
+          file.size <= 5 * 1024 * 1024;
+
+        return validType && validSize;
+      });
+
+    const newImages: ImageItem[] =
+      selectedFiles.map((file) => ({
+        id: `${Date.now()}-${Math.random()
+          .toString(36)
+          .slice(2)}`,
+        file,
+        preview: URL.createObjectURL(file),
+      }));
+
+    if (!newImages.length) {
+      event.target.value = "";
+      return;
+    }
+
+    setImages((previous) => {
+      const updated = [...previous, ...newImages];
+
+      if (!mainImageId && updated.length > 0) {
+        setMainImageId(updated[0].id);
+      }
+
+      return updated;
+    });
+
+    event.target.value = "";
+  };
+
+  const handleRemoveImage = (id: string) => {
+    setImages((previous) => {
+      const imageToRemove = previous.find(
+        (image) => image.id === id
+      );
+
+      if (imageToRemove) {
+        URL.revokeObjectURL(
+          imageToRemove.preview
+        );
+      }
+
+      const updated = previous.filter(
+        (image) => image.id !== id
+      );
+
+      if (id === mainImageId) {
+        setMainImageId(
+          updated[0]?.id ?? null
+        );
+      }
+
+      return updated;
+    });
+  };
+
+  const toggleAmenity = (amenity: string) => {
+    setFormData((previous) => {
+      const alreadySelected =
+        previous.amenities.includes(amenity);
+
+      return {
+        ...previous,
+        amenities: alreadySelected
+          ? previous.amenities.filter(
+              (item) => item !== amenity
+            )
+          : [...previous.amenities, amenity],
+      };
+    });
+  };
+
+  const handleSubmit = async () => {
+    setSubmitError("");
+
+    for (let step = 0; step <= 5; step += 1) {
       if (!validateStep(step)) {
         setCurrentStep(step);
         return;
       }
     }
 
-    if (
-      !formData.transactionType ||
-      !formData.propertyType ||
-      formData.latitude === null ||
-      formData.longitude === null
-    ) {
-      return;
-    }
-
-    setIsSubmitting(true);
-    setSubmitError("");
-
     try {
-      const response = await fetch(
+      setIsSubmitting(true);
+
+      const uploadedImages: string[] = [];
+
+      const orderedImages = [
+        ...images.filter(
+          (image) => image.id === mainImageId
+        ),
+        ...images.filter(
+          (image) => image.id !== mainImageId
+        ),
+      ];
+
+      /*
+       * آپلود تصاویر به ترتیب.
+       * تصویر اصلی همیشه اولین تصویر ارسالی خواهد بود.
+       */
+      for (const image of orderedImages) {
+        const uploadData = new FormData();
+
+        uploadData.append("file", image.file);
+
+        const response = await fetch(
+          "/api/upload",
+          {
+            method: "POST",
+            body: uploadData,
+          }
+        );
+
+        const result = await response.json();
+
+        if (!response.ok || !result.success) {
+          throw new Error(
+            result.message ||
+              "آپلود تصویر با خطا مواجه شد."
+          );
+        }
+
+        if (result.image?.url) {
+          uploadedImages.push(
+            result.image.url
+          );
+        }
+      }
+
+      const propertyResponse = await fetch(
         "/api/properties",
         {
           method: "POST",
-
           headers: {
-            "Content-Type":
-              "application/json",
+            "Content-Type": "application/json",
           },
-
           body: JSON.stringify({
             transactionType:
-              formData.transactionType ===
-              "فروش"
+              formData.transactionType === "فروش"
                 ? "buy"
                 : "rent",
 
             propertyType:
-              formData.propertyType ===
-              "آپارتمان"
+              formData.propertyType === "آپارتمان"
                 ? "apartment"
-                : formData.propertyType ===
-                    "خانه"
-                  ? "house"
-                  : formData.propertyType ===
-                      "ویلا"
-                    ? "villa"
-                    : formData.propertyType ===
-                        "زمین"
-                      ? "land"
-                      : "commercial",
+                : formData.propertyType === "خانه"
+                ? "house"
+                : formData.propertyType === "ویلا"
+                ? "villa"
+                : formData.propertyType === "زمین"
+                ? "land"
+                : "commercial",
 
-            title:
-              formData.title.trim(),
+            area: Number(formData.area),
+
+            bedrooms: Number(
+              formData.bedrooms
+            ),
+
+            floor: formData.floor
+              ? Number(formData.floor)
+              : undefined,
+
+            totalFloors: formData.totalFloors
+              ? Number(formData.totalFloors)
+              : undefined,
+
+            yearBuilt: formData.yearBuilt
+              ? Number(formData.yearBuilt)
+              : undefined,
+
+            salePrice:
+              formData.transactionType ===
+                "فروش" &&
+              formData.salePrice
+                ? Number(formData.salePrice)
+                : undefined,
+
+            deposit:
+              formData.transactionType ===
+                "اجاره" &&
+              formData.deposit
+                ? Number(formData.deposit)
+                : undefined,
+
+            rent:
+              formData.transactionType ===
+                "اجاره" &&
+              formData.rent
+                ? Number(formData.rent)
+                : undefined,
+
+            amenities: formData.amenities,
+
+            title: formData.title.trim(),
 
             description:
               formData.description.trim(),
 
-            area:
-              parseNumericValue(
-                formData.area,
-              ),
-
-            bedrooms:
-              parseNumericValue(
-                formData.bedrooms,
-              ),
-
-            floor:
-              parseNumericValue(
-                formData.floor,
-              ),
-
-            totalFloors:
-              parseNumericValue(
-                formData.totalFloors,
-              ),
-
-            yearBuilt:
-              parseNumericValue(
-                formData.yearBuilt,
-              ),
-
-            salePrice:
-              parseNumericValue(
-                formData.salePrice,
-              ),
-
-            deposit:
-              parseNumericValue(
-                formData.deposit,
-              ),
-
-            rent:
-              parseNumericValue(
-                formData.rent,
-              ),
-
-            amenities:
-              formData.amenities,
-
-            city:
-              formData.city.trim(),
+            city: formData.city.trim(),
 
             district:
               formData.district.trim(),
 
-            latitude:
-              formData.latitude,
+            latitude: formData.latitude,
 
-            longitude:
-              formData.longitude,
+            longitude: formData.longitude,
+
+            images: uploadedImages,
           }),
-        },
+        }
       );
 
-      const data =
-        await response.json();
+      const propertyResult =
+        await propertyResponse.json();
 
-      if (!response.ok) {
-        setSubmitError(
-          data.message ||
-            "ثبت آگهی انجام نشد.",
+      if (!propertyResponse.ok) {
+        throw new Error(
+          propertyResult.message ||
+            "ثبت آگهی با خطا مواجه شد."
         );
-
-        return;
       }
 
       router.push("/profile/ads");
     } catch (error) {
-      console.error(
-        "Submit property error:",
-        error,
-      );
-
       setSubmitError(
-        "ارتباط با سرور برقرار نشد. لطفاً دوباره تلاش کنید.",
+        error instanceof Error
+          ? error.message
+          : "ثبت آگهی با خطا مواجه شد."
       );
     } finally {
       setIsSubmitting(false);
     }
-  }
+  };
 
-  return (
-    <main
-      dir="rtl"
-      className="bg-white"
-    >
-      <section className="mx-auto w-full max-w-[1224px] px-4 pb-16 pt-24 md:px-6 md:pt-24 lg:px-0 lg:pt-10">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-[var(--color-gray-13)] md:text-3xl">
-            ثبت آگهی ملک
-          </h1>
+  const renderError = (error?: string) => {
+    if (!error) {
+      return null;
+    }
 
-          <p className="mt-2 text-sm text-[var(--color-gray-8)]">
-            اطلاعات ملک خود را
-            مرحله‌به‌مرحله تکمیل کنید.
-          </p>
+    return (
+      <p className="mt-2 text-xs font-medium text-[#CB1B1B]">
+        {error}
+      </p>
+    );
+  };
+
+  /*
+   * این قسمت مهم است:
+   * خلاصه آگهی در تمام مراحل از formData خوانده می‌شود،
+   * بنابراین با هر تغییر input بلافاصله آپدیت می‌شود.
+   */
+  const liveSummary = (
+    <div className="rounded-2xl border border-gray-3 bg-white">
+      <div className="border-b border-gray-3 px-5 py-4">
+        <h3 className="font-bold text-gray-13">
+          خلاصه آگهی
+        </h3>
+
+        <p className="mt-1 text-xs text-gray-7">
+          اطلاعات انتخاب‌شده به صورت لحظه‌ای نمایش داده می‌شود.
+        </p>
+      </div>
+
+      <div className="p-5">
+        <div className="flex flex-wrap gap-2">
+          {formData.transactionType && (
+            <span className="rounded-lg bg-[#CB1B1B] px-3 py-1.5 text-xs font-bold text-white">
+              {formData.transactionType}
+            </span>
+          )}
+
+          {formData.propertyType && (
+            <span className="rounded-lg bg-gray-2 px-3 py-1.5 text-xs font-bold text-gray-11">
+              {formData.propertyType}
+            </span>
+          )}
         </div>
 
-        {/* PROGRESS */}
-        <div className="mb-6 rounded-2xl border border-[var(--color-gray-4)] p-4 md:p-6">
-          <div className="mb-4 flex justify-between">
-            <span className="text-sm font-bold">
-              مرحله{" "}
-              {currentStep + 1} از{" "}
-              {steps.length}
-            </span>
+        {!formData.transactionType &&
+          !formData.propertyType && (
+            <p className="text-sm text-gray-7">
+              هنوز نوع آگهی یا ملک انتخاب نشده است.
+            </p>
+          )}
 
-            <span className="text-sm font-bold text-[var(--color-primary)]">
-              {Math.round(
-                progress,
-              )}
-              ٪
-            </span>
-          </div>
+        <div className="mt-5 grid grid-cols-2 gap-2">
+          <SummaryItem
+            label="متراژ"
+            value={
+              formData.area
+                ? `${formatPersianNumber(
+                    formData.area
+                  )} متر`
+                : "—"
+            }
+          />
 
-          <div className="h-2 overflow-hidden rounded-full bg-[var(--color-gray-3)]">
-            <div
-              className="h-full rounded-full bg-[var(--color-primary)] transition-all"
-              style={{
-                width: `${progress}%`,
-              }}
+          <SummaryItem
+            label="اتاق"
+            value={
+              formData.bedrooms
+                ? `${toPersianDigits(
+                    formData.bedrooms
+                  )} خواب`
+                : "—"
+            }
+          />
+
+          <SummaryItem
+            label="طبقه"
+            value={
+              formData.floor
+                ? toPersianDigits(
+                    formData.floor
+                  )
+                : "—"
+            }
+          />
+
+          <SummaryItem
+            label="سال ساخت"
+            value={
+              formData.yearBuilt
+                ? toPersianDigits(
+                    formData.yearBuilt
+                  )
+                : "—"
+            }
+          />
+        </div>
+
+        {formData.transactionType ===
+          "فروش" &&
+          formData.salePrice && (
+            <div className="mt-3 rounded-xl bg-[#CB1B1B]/5 p-3">
+              <p className="text-xs text-gray-7">
+                قیمت فروش
+              </p>
+
+              <p className="mt-1 text-sm font-bold text-[#CB1B1B]">
+                {formatPersianNumber(
+                  formData.salePrice
+                )}{" "}
+                تومان
+              </p>
+            </div>
+          )}
+
+        {formData.transactionType ===
+          "اجاره" && (
+          <div className="mt-3 grid grid-cols-2 gap-2">
+            <SummaryItem
+              label="ودیعه"
+              value={
+                formData.deposit
+                  ? `${formatPersianNumber(
+                      formData.deposit
+                    )} تومان`
+                  : "—"
+              }
+            />
+
+            <SummaryItem
+              label="اجاره"
+              value={
+                formData.rent
+                  ? `${formatPersianNumber(
+                      formData.rent
+                    )} تومان`
+                  : "—"
+              }
             />
           </div>
+        )}
 
-          <p className="mt-4 text-center text-sm font-bold text-[var(--color-gray-10)]">
-            {
-              steps[
-                currentStep
+        {(formData.city ||
+          formData.district) && (
+          <div className="mt-3 flex items-start gap-2 rounded-xl bg-gray-1 p-3">
+            <FiMapPin
+              size={16}
+              className="mt-0.5 shrink-0 text-[#CB1B1B]"
+            />
+
+            <p className="text-xs leading-6 text-gray-8">
+              {[
+                formData.city,
+                formData.district,
               ]
-            }
-          </p>
-        </div>
+                .filter(Boolean)
+                .join("، ")}
+            </p>
+          </div>
+        )}
 
-        {/* CURRENT SELECTIONS */}
-        {(formData.transactionType ||
-          formData.propertyType ||
-          formData.area) && (
-          <div className="mb-6 rounded-2xl border border-[var(--color-gray-4)] bg-[var(--color-gray-2)] p-4">
-            <p className="mb-3 text-xs font-bold text-[var(--color-gray-7)]">
-              اطلاعات انتخاب‌شده
+        {formData.amenities.length > 0 && (
+          <div className="mt-4">
+            <p className="text-xs font-medium text-gray-7">
+              امکانات
             </p>
 
-            <div className="flex flex-wrap gap-2">
-              {formData.transactionType && (
-                <SelectionChip
-                  label="نوع آگهی"
-                  value={
-                    formData.transactionType
-                  }
-                />
-              )}
-
-              {formData.propertyType && (
-                <SelectionChip
-                  label="نوع ملک"
-                  value={
-                    formData.propertyType
-                  }
-                />
-              )}
-
-              {formData.area && (
-                <SelectionChip
-                  label="متراژ"
-                  value={`${formData.area} متر`}
-                />
-              )}
-
-              {formData.bedrooms !==
-                "" && (
-                <SelectionChip
-                  label="اتاق"
-                  value={
-                    formData.bedrooms
-                  }
-                />
-              )}
-
-              {formData.yearBuilt && (
-                <SelectionChip
-                  label="سال ساخت"
-                  value={
-                    formData.yearBuilt
-                  }
-                />
+            <div className="mt-2 flex flex-wrap gap-1.5">
+              {formData.amenities.map(
+                (amenity) => (
+                  <span
+                    key={amenity}
+                    className="rounded-md bg-gray-2 px-2 py-1 text-[11px] text-gray-9"
+                  >
+                    {amenity}
+                  </span>
+                )
               )}
             </div>
           </div>
         )}
 
-        <div className="rounded-3xl border border-[var(--color-gray-4)] bg-white p-5 shadow-sm md:p-8">
-          {/* STEP 1 */}
-          {currentStep === 0 && (
-            <>
-              <SectionTitle
-                title="نوع آگهی"
-                description="مشخص کنید ملک برای فروش است یا اجاره."
-              />
+        {formData.title && (
+          <div className="mt-4 border-t border-gray-3 pt-4">
+            <p className="text-xs text-gray-7">
+              عنوان
+            </p>
 
-              <div className="grid gap-4 sm:grid-cols-2">
-                <ChoiceCard
-                  selected={
-                    formData.transactionType ===
-                    "فروش"
-                  }
-                  title="فروش"
-                  description="ثبت ملک برای فروش"
-                  icon={
-                    <FiKey />
-                  }
-                  onClick={() =>
-                    updateField(
-                      "transactionType",
-                      "فروش",
-                    )
-                  }
-                />
+            <p className="mt-1 line-clamp-2 text-sm font-bold text-gray-13">
+              {formData.title}
+            </p>
+          </div>
+        )}
 
-                <ChoiceCard
-                  selected={
-                    formData.transactionType ===
-                    "اجاره"
-                  }
-                  title="اجاره"
-                  description="رهن و اجاره ملک"
-                  icon={
-                    <FiHome />
-                  }
-                  onClick={() =>
-                    updateField(
-                      "transactionType",
-                      "اجاره",
-                    )
-                  }
-                />
-              </div>
+        {images.length > 0 && (
+          <div className="mt-4 border-t border-gray-3 pt-4">
+            <div className="flex items-center justify-between">
+              <p className="text-xs text-gray-7">
+                تصاویر
+              </p>
 
-              <ErrorText
-                text={
-                  errors.transactionType
-                }
-              />
+              <span className="text-xs font-bold text-gray-10">
+                {toPersianDigits(images.length)} تصویر
+              </span>
+            </div>
+          </div>
+        )}
+      </div>
+    </div>
+  );
 
-              <h3 className="mb-4 mt-8 font-bold">
-                نوع ملک
-              </h3>
+  return (
+    <div
+      dir="rtl"
+      className="min-h-screen bg-gray-1 pb-16"
+    >
+      <div className="mx-auto w-full max-w-[1224px] px-4 sm:px-5 md:px-6">
+        {/* Page Header */}
+        <div className="pt-6 sm:pt-8 md:pt-10">
+          <h1 className="text-2xl font-bold text-gray-13 sm:text-3xl">
+            ثبت آگهی
+          </h1>
 
-              <div className="grid gap-3 sm:grid-cols-2 lg:grid-cols-3">
-                {propertyTypes.map(
-                  (item) => (
-                    <ChoiceCard
-                      key={
-                        item.title
-                      }
-                      selected={
-                        formData.propertyType ===
-                        item.title
-                      }
-                      title={
-                        item.title
-                      }
-                      description={
-                        item.description
-                      }
-                      onClick={() =>
-                        updateField(
-                          "propertyType",
-                          item.title,
+          <p className="mt-2 max-w-2xl text-sm leading-6 text-gray-7 sm:text-base">
+            اطلاعات ملک خود را وارد کنید تا آگهی شما
+            در سقفینو ثبت شود.
+          </p>
+        </div>
+
+        {/* Steps */}
+        <div className="mt-6 overflow-x-auto pb-2 sm:mt-8">
+          <div className="flex min-w-max items-center justify-start gap-2 md:justify-center md:gap-3">
+            {steps.map((step, index) => {
+              const isActive =
+                index === currentStep;
+
+              const isCompleted =
+                index < currentStep;
+
+              return (
+                <div
+                  key={step}
+                  className="flex items-center"
+                >
+                  <button
+                    type="button"
+                    onClick={() =>
+                      handleStepClick(index)
+                    }
+                    disabled={
+                      index >= currentStep
+                    }
+                    className={`flex items-center gap-2 whitespace-nowrap ${
+                      index < currentStep
+                        ? "cursor-pointer"
+                        : "cursor-default"
+                    }`}
+                  >
+                    <span
+                      className={`flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-bold transition sm:h-9 sm:w-9 sm:text-sm ${
+                        isActive
+                          ? "bg-[#CB1B1B] text-white"
+                          : isCompleted
+                          ? "bg-[#CB1B1B]/10 text-[#CB1B1B]"
+                          : "bg-gray-3 text-gray-7"
+                      }`}
+                    >
+                      {isCompleted ? (
+                        <FiCheck size={15} />
+                      ) : (
+                        toPersianDigits(
+                          index + 1
                         )
-                      }
-                    />
-                  ),
+                      )}
+                    </span>
+
+                    <span
+                      className={`text-xs sm:text-sm ${
+                        isActive
+                          ? "font-bold text-gray-13"
+                          : "text-gray-7"
+                      }`}
+                    >
+                      {step}
+                    </span>
+                  </button>
+
+                  {index <
+                    steps.length - 1 && (
+                    <span className="mx-2 h-px w-4 bg-gray-3 sm:mx-3 sm:w-7" />
+                  )}
+                </div>
+              );
+            })}
+          </div>
+        </div>
+
+        {/* Mobile Live Summary */}
+        <div className="mt-5 lg:hidden">
+          {liveSummary}
+        </div>
+
+        {/* Content Layout */}
+        <div className="mt-5 grid grid-cols-1 gap-5 lg:mt-8 lg:grid-cols-[minmax(0,1fr)_330px] lg:items-start lg:gap-6">
+          {/* Form */}
+          <div className="min-w-0 rounded-2xl border border-gray-3 bg-white p-4 shadow-sm sm:p-6 md:p-8">
+            {/* STEP 0 */}
+            {currentStep === 0 && (
+              <div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-13 sm:text-xl">
+                    نوع آگهی
+                  </h2>
+
+                  <p className="mt-2 text-sm leading-6 text-gray-7">
+                    ابتدا مشخص کنید قصد فروش یا اجاره
+                    ملک را دارید.
+                  </p>
+                </div>
+
+                <div className="mt-6 grid grid-cols-1 gap-3 sm:grid-cols-2 sm:gap-4">
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateFormData(
+                        "transactionType",
+                        "فروش"
+                      )
+                    }
+                    className={`rounded-xl border p-4 text-right transition sm:p-5 ${
+                      formData.transactionType ===
+                      "فروش"
+                        ? "border-[#CB1B1B] bg-[#CB1B1B]/5"
+                        : "border-gray-3 hover:border-gray-5"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${
+                          formData.transactionType ===
+                          "فروش"
+                            ? "bg-[#CB1B1B] text-white"
+                            : "bg-gray-2 text-gray-8"
+                        }`}
+                      >
+                        <FiHome size={21} />
+                      </div>
+
+                      <div>
+                        <h3 className="font-bold text-gray-13">
+                          فروش
+                        </h3>
+
+                        <p className="mt-1 text-xs text-gray-7 sm:text-sm">
+                          فروش ملک
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+
+                  <button
+                    type="button"
+                    onClick={() =>
+                      updateFormData(
+                        "transactionType",
+                        "اجاره"
+                      )
+                    }
+                    className={`rounded-xl border p-4 text-right transition sm:p-5 ${
+                      formData.transactionType ===
+                      "اجاره"
+                        ? "border-[#CB1B1B] bg-[#CB1B1B]/5"
+                        : "border-gray-3 hover:border-gray-5"
+                    }`}
+                  >
+                    <div className="flex items-center gap-3 sm:gap-4">
+                      <div
+                        className={`flex h-11 w-11 shrink-0 items-center justify-center rounded-xl sm:h-12 sm:w-12 ${
+                          formData.transactionType ===
+                          "اجاره"
+                            ? "bg-[#CB1B1B] text-white"
+                            : "bg-gray-2 text-gray-8"
+                        }`}
+                      >
+                        <FiKey size={21} />
+                      </div>
+
+                      <div>
+                        <h3 className="font-bold text-gray-13">
+                          اجاره
+                        </h3>
+
+                        <p className="mt-1 text-xs text-gray-7 sm:text-sm">
+                          اجاره ملک
+                        </p>
+                      </div>
+                    </div>
+                  </button>
+                </div>
+
+                {renderError(
+                  errors.transactionType
                 )}
+
+                <div className="mt-8 border-t border-gray-3 pt-7 sm:mt-10 sm:pt-8">
+                  <h2 className="text-base font-bold text-gray-13 sm:text-lg">
+                    نوع ملک
+                  </h2>
+
+                  <div className="mt-4 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-5">
+                    {propertyTypes.map(
+                      (property) => {
+                        const selected =
+                          formData.propertyType ===
+                          property.title;
+
+                        return (
+                          <button
+                            key={
+                              property.title
+                            }
+                            type="button"
+                            onClick={() =>
+                              updateFormData(
+                                "propertyType",
+                                property.title
+                              )
+                            }
+                            className={`flex min-h-[100px] flex-col items-center justify-center gap-2.5 rounded-xl border p-3 transition sm:min-h-[110px] ${
+                              selected
+                                ? "border-[#CB1B1B] bg-[#CB1B1B]/5 text-[#CB1B1B]"
+                                : "border-gray-3 text-gray-8 hover:border-gray-5"
+                            }`}
+                          >
+                            {property.icon}
+
+                            <span className="text-xs font-medium sm:text-sm">
+                              {
+                                property.title
+                              }
+                            </span>
+                          </button>
+                        );
+                      }
+                    )}
+                  </div>
+
+                  {renderError(
+                    errors.propertyType
+                  )}
+                </div>
               </div>
+            )}
 
-              <ErrorText
-                text={
-                  errors.propertyType
-                }
-              />
-            </>
-          )}
+            {/* STEP 1 */}
+            {currentStep === 1 && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-13 sm:text-xl">
+                  مشخصات ملک
+                </h2>
 
-          {/* STEP 2 */}
-          {currentStep === 1 && (
-            <>
-              <SectionTitle
-                title="مشخصات ملک"
-                description="اطلاعات اصلی ملک را وارد کنید."
-              />
+                <p className="mt-2 text-sm leading-6 text-gray-7">
+                  مشخصات اصلی ملک را وارد کنید.
+                </p>
 
-              <div className="grid gap-5 sm:grid-cols-2 lg:grid-cols-3">
-                <Field
-                  label="متراژ"
-                  error={
-                    errors.area
-                  }
-                >
-                  <input
-                    value={
+                <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <InputField
+                    label="متراژ"
+                    value={formatPersianNumber(
                       formData.area
-                    }
+                    )}
+                    onChange={handleNumberChange(
+                      "area"
+                    )}
+                    placeholder="مثلاً ۱۲۰"
+                    suffix="متر"
+                    error={errors.area}
                     inputMode="numeric"
-                    onChange={(
-                      event,
-                    ) =>
-                      updateField(
-                        "area",
-                        formatNumber(
-                          event.target
-                            .value,
-                        ),
-                      )
-                    }
-                    className={inputClass}
-                    placeholder="120"
                   />
-                </Field>
 
-                <Field
-                  label="اتاق خواب"
-                  error={
-                    errors.bedrooms
-                  }
-                >
-                  <input
-                    value={
+                  <InputField
+                    label="تعداد اتاق خواب"
+                    value={toPersianDigits(
                       formData.bedrooms
-                    }
+                    )}
+                    onChange={handleNumberChange(
+                      "bedrooms"
+                    )}
+                    placeholder="مثلاً ۲"
+                    error={errors.bedrooms}
                     inputMode="numeric"
-                    onChange={(
-                      event,
-                    ) =>
-                      updateField(
-                        "bedrooms",
-                        normalizeDigits(
-                          event.target
-                            .value,
-                        ),
-                      )
-                    }
-                    className={inputClass}
-                    placeholder="2"
                   />
-                </Field>
 
-                <Field
-                  label="طبقه"
-                  error={
-                    errors.floor
-                  }
-                >
-                  <input
-                    value={
+                  <InputField
+                    label="طبقه"
+                    value={toPersianDigits(
                       formData.floor
-                    }
+                    )}
+                    onChange={handleNumberChange(
+                      "floor"
+                    )}
+                    placeholder="مثلاً ۳"
+                    error={errors.floor}
                     inputMode="numeric"
-                    onChange={(
-                      event,
-                    ) =>
-                      updateField(
-                        "floor",
-                        normalizeDigits(
-                          event.target
-                            .value,
-                        ),
-                      )
-                    }
-                    className={inputClass}
-                    placeholder="3"
                   />
-                </Field>
 
-                <Field
-                  label="کل طبقات"
-                  error={
-                    errors.totalFloors
-                  }
-                >
-                  <input
-                    value={
+                  <InputField
+                    label="تعداد کل طبقات"
+                    value={toPersianDigits(
                       formData.totalFloors
-                    }
+                    )}
+                    onChange={handleNumberChange(
+                      "totalFloors"
+                    )}
+                    placeholder="مثلاً ۵"
+                    error={errors.totalFloors}
                     inputMode="numeric"
-                    onChange={(
-                      event,
-                    ) =>
-                      updateField(
-                        "totalFloors",
-                        normalizeDigits(
-                          event.target
-                            .value,
-                        ),
-                      )
-                    }
-                    className={inputClass}
-                    placeholder="5"
                   />
-                </Field>
 
-                <Field
-                  label="سال ساخت"
-                  error={
-                    errors.yearBuilt
-                  }
-                >
-                  <input
-                    value={
+                  <InputField
+                    label="سال ساخت"
+                    value={toPersianDigits(
                       formData.yearBuilt
-                    }
+                    )}
+                    onChange={handleNumberChange(
+                      "yearBuilt"
+                    )}
+                    placeholder="مثلاً ۱۴۰۲"
+                    error={errors.yearBuilt}
                     inputMode="numeric"
-                    onChange={(
-                      event,
-                    ) =>
-                      updateField(
-                        "yearBuilt",
-                        normalizeDigits(
-                          event.target
-                            .value,
-                        ),
-                      )
-                    }
-                    className={inputClass}
-                    placeholder="1400"
-                  />
-                </Field>
-              </div>
-            </>
-          )}
-
-          {/* STEP 3 */}
-          {currentStep === 2 && (
-            <>
-              <SectionTitle
-                title="قیمت"
-                description="مبلغ را به تومان وارد کنید. مبلغ دقیق به حروف همزمان نمایش داده می‌شود."
-              />
-
-              {formData.transactionType ===
-                "فروش" && (
-                <PriceField
-                  label="قیمت فروش"
-                  value={
-                    formData.salePrice
-                  }
-                  error={
-                    errors.salePrice
-                  }
-                  onChange={(
-                    event,
-                  ) =>
-                    handlePriceChange(
-                      event,
-                      "salePrice",
-                    )
-                  }
-                />
-              )}
-
-              {formData.transactionType ===
-                "اجاره" && (
-                <div className="grid gap-5 md:grid-cols-2">
-                  <PriceField
-                    label="مبلغ ودیعه"
-                    value={
-                      formData.deposit
-                    }
-                    error={
-                      errors.deposit
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      handlePriceChange(
-                        event,
-                        "deposit",
-                      )
-                    }
-                  />
-
-                  <PriceField
-                    label="اجاره ماهانه"
-                    value={
-                      formData.rent
-                    }
-                    error={
-                      errors.rent
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      handlePriceChange(
-                        event,
-                        "rent",
-                      )
-                    }
                   />
                 </div>
-              )}
-            </>
-          )}
 
-          {/* STEP 4 */}
-          {currentStep === 3 && (
-            <>
-              <SectionTitle
-                title="امکانات"
-                description="امکانات موجود در ملک را انتخاب کنید."
-              />
+                {formData.area && (
+                  <div className="mt-5 rounded-xl bg-gray-1 p-4">
+                    <p className="text-xs text-gray-7">
+                      متراژ واردشده
+                    </p>
 
-              <div className="grid gap-3 sm:grid-cols-2 md:grid-cols-3">
-                {amenities.map(
-                  (amenity) => {
+                    <p className="mt-1 text-sm font-bold text-gray-13">
+                      {formatPersianNumber(
+                        formData.area
+                      )}{" "}
+                      متر مربع
+                    </p>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* STEP 2 */}
+            {currentStep === 2 && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-13 sm:text-xl">
+                  قیمت
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-gray-7">
+                  اطلاعات مالی آگهی را وارد کنید.
+                </p>
+
+                <div className="mt-6">
+                  {formData.transactionType ===
+                    "فروش" && (
+                    <div>
+                      <InputField
+                        label="قیمت فروش"
+                        value={formatPersianNumber(
+                          formData.salePrice
+                        )}
+                        onChange={(event) =>
+                          updateFormData(
+                            "salePrice",
+                            cleanNumber(
+                              event.target.value
+                            )
+                          )
+                        }
+                        placeholder="مثلاً ۵,۰۰۰,۰۰۰,۰۰۰"
+                        suffix="تومان"
+                        error={errors.salePrice}
+                        inputMode="numeric"
+                      />
+
+                      {formData.salePrice && (
+                        <p className="mt-3 rounded-xl bg-[#CB1B1B]/5 px-4 py-3 text-sm text-gray-9">
+                          حدوداً{" "}
+                          <span className="font-bold text-[#CB1B1B]">
+                            {numberToExactText(
+                              formData.salePrice
+                            )}{" "}
+                            تومان
+                          </span>
+                        </p>
+                      )}
+                    </div>
+                  )}
+
+                  {formData.transactionType ===
+                    "اجاره" && (
+                    <div className="grid grid-cols-1 gap-5 sm:grid-cols-2">
+                      <InputField
+                        label="مبلغ ودیعه"
+                        value={formatPersianNumber(
+                          formData.deposit
+                        )}
+                        onChange={(event) =>
+                          updateFormData(
+                            "deposit",
+                            cleanNumber(
+                              event.target.value
+                            )
+                          )
+                        }
+                        placeholder="مثلاً ۵۰۰,۰۰۰,۰۰۰"
+                        suffix="تومان"
+                        error={errors.deposit}
+                        inputMode="numeric"
+                      />
+
+                      <InputField
+                        label="اجاره ماهانه"
+                        value={formatPersianNumber(
+                          formData.rent
+                        )}
+                        onChange={(event) =>
+                          updateFormData(
+                            "rent",
+                            cleanNumber(
+                              event.target.value
+                            )
+                          )
+                        }
+                        placeholder="مثلاً ۲۰,۰۰۰,۰۰۰"
+                        suffix="تومان"
+                        error={errors.rent}
+                        inputMode="numeric"
+                      />
+                    </div>
+                  )}
+                </div>
+              </div>
+            )}
+
+            {/* STEP 3 */}
+            {currentStep === 3 && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-13 sm:text-xl">
+                  امکانات
+                </h2>
+
+                <p className="mt-2 text-sm leading-6 text-gray-7">
+                  امکاناتی که ملک دارد را انتخاب کنید.
+                </p>
+
+                <div className="mt-6 grid grid-cols-2 gap-2.5 sm:grid-cols-3">
+                  {amenities.map((amenity) => {
                     const selected =
                       formData.amenities.includes(
-                        amenity,
+                        amenity
                       );
 
                     return (
                       <button
-                        key={
-                          amenity
-                        }
+                        key={amenity}
                         type="button"
                         onClick={() =>
                           toggleAmenity(
-                            amenity,
+                            amenity
                           )
                         }
-                        className={`flex items-center justify-between rounded-xl border p-4 ${
+                        className={`rounded-xl border px-3 py-3.5 text-right transition sm:px-4 sm:py-4 ${
                           selected
-                            ? "border-[var(--color-primary)] bg-red-50"
-                            : "border-[var(--color-gray-4)]"
+                            ? "border-[#CB1B1B] bg-[#CB1B1B]/5 text-[#CB1B1B]"
+                            : "border-gray-3 text-gray-9 hover:border-gray-5"
                         }`}
                       >
-                        <span className="font-bold">
-                          {
-                            amenity
-                          }
-                        </span>
+                        <div className="flex items-center justify-between gap-2">
+                          <span className="text-xs font-medium sm:text-sm">
+                            {amenity}
+                          </span>
 
-                        {selected && (
-                          <FiCheck className="text-[var(--color-primary)]" />
-                        )}
+                          {selected && (
+                            <span className="flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-[#CB1B1B] text-white">
+                              <FiCheck
+                                size={12}
+                              />
+                            </span>
+                          )}
+                        </div>
                       </button>
                     );
-                  },
+                  })}
+                </div>
+
+                {formData.amenities.length >
+                  0 && (
+                  <div className="mt-6 rounded-xl bg-gray-1 p-4">
+                    <p className="text-xs text-gray-7">
+                      امکانات انتخاب‌شده
+                    </p>
+
+                    <div className="mt-3 flex flex-wrap gap-2">
+                      {formData.amenities.map(
+                        (amenity) => (
+                          <span
+                            key={amenity}
+                            className="rounded-lg bg-white px-3 py-1.5 text-xs font-medium text-gray-10"
+                          >
+                            {amenity}
+                          </span>
+                        )
+                      )}
+                    </div>
+                  </div>
                 )}
               </div>
+            )}
 
-              {formData.amenities
-                .length > 0 && (
-                <div className="mt-6 flex flex-wrap gap-2">
-                  {formData.amenities.map(
-                    (item) => (
-                      <span
-                        key={item}
-                        className="rounded-lg bg-red-50 px-3 py-2 text-xs font-bold text-[var(--color-primary)]"
-                      >
-                        {item}
-                      </span>
-                    ),
+            {/* STEP 4 */}
+            {currentStep === 4 && (
+              <div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-13 sm:text-xl">
+                    تصاویر و اطلاعات آگهی
+                  </h2>
+
+                  <p className="mt-2 text-sm leading-6 text-gray-7">
+                    عنوان، توضیحات و تصاویر ملک را وارد
+                    کنید.
+                  </p>
+                </div>
+
+                <div className="mt-6">
+                  <label className="mb-2 block text-sm font-medium text-gray-12">
+                    عنوان آگهی
+                  </label>
+
+                  <input
+                    value={formData.title}
+                    onChange={(event) =>
+                      updateFormData(
+                        "title",
+                        event.target.value
+                      )
+                    }
+                    placeholder="مثلاً آپارتمان ۱۲۰ متری در سعادت‌آباد"
+                    className="w-full rounded-xl border border-gray-3 bg-white px-4 py-3 text-sm text-gray-13 outline-none transition placeholder:text-gray-6 focus:border-[#CB1B1B]"
+                  />
+
+                  {renderError(errors.title)}
+                </div>
+
+                <div className="mt-5">
+                  <label className="mb-2 block text-sm font-medium text-gray-12">
+                    توضیحات
+                  </label>
+
+                  <textarea
+                    value={formData.description}
+                    onChange={(event) =>
+                      updateFormData(
+                        "description",
+                        event.target.value
+                      )
+                    }
+                    rows={6}
+                    placeholder="توضیحات کامل ملک، شرایط فروش یا اجاره و سایر موارد مهم را بنویسید..."
+                    className="w-full resize-none rounded-xl border border-gray-3 bg-white px-4 py-3 text-sm leading-7 text-gray-13 outline-none transition placeholder:text-gray-6 focus:border-[#CB1B1B]"
+                  />
+
+                  {renderError(
+                    errors.description
                   )}
                 </div>
-              )}
-            </>
-          )}
 
-          {/* STEP 5 */}
-          {currentStep === 4 && (
-            <>
-              <SectionTitle
-                title="تصاویر و توضیحات"
-                description="تصویر اختیاری است. اگر تصویری قرار ندهید تصویر پیش‌فرض سقفینو نمایش داده می‌شود."
-              />
-
-              <div className="space-y-6">
-                <Field
-                  label="عنوان آگهی"
-                  error={
-                    errors.title
-                  }
-                >
-                  <input
-                    value={
-                      formData.title
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      handleTextChange(
-                        event,
-                        "title",
-                      )
-                    }
-                    className={inputClass}
-                    placeholder="آپارتمان دو خوابه در سعادت‌آباد"
-                  />
-                </Field>
-
-                <Field
-                  label="توضیحات"
-                  error={
-                    errors.description
-                  }
-                >
-                  <textarea
-                    rows={7}
-                    value={
-                      formData.description
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      handleTextChange(
-                        event,
-                        "description",
-                      )
-                    }
-                    className={`${inputClass} h-auto py-4`}
-                  />
-                </Field>
-
-                <div>
-                  <div className="mb-3 flex items-center justify-between">
+                {/* Images */}
+                <div className="mt-7 border-t border-gray-3 pt-7">
+                  <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
                     <div>
-                      <p className="font-bold">
-                        تصاویر
-                      </p>
+                      <h3 className="font-bold text-gray-13">
+                        تصاویر ملک
+                      </h3>
 
-                      <p className="mt-1 text-xs text-[var(--color-gray-7)]">
-                        اختیاری — حداکثر
-                        ۱۰ تصویر
+                      <p className="mt-1 text-xs leading-5 text-gray-7">
+                        حداکثر ۱۰ تصویر با فرمت JPG،
+                        PNG یا WEBP و حجم حداکثر ۵ مگابایت.
                       </p>
                     </div>
 
-                    <span className="text-sm font-bold">
-                      {
+                    <span className="text-xs font-bold text-gray-8">
+                      {toPersianDigits(
                         images.length
-                      }{" "}
-                      / 10
+                      )}
+                      /۱۰
                     </span>
                   </div>
 
-                  {images.length <
-                    10 && (
-                    <label className="flex min-h-[170px] cursor-pointer flex-col items-center justify-center rounded-2xl border-2 border-dashed border-[var(--color-gray-5)]">
-                      <FiUploadCloud
-                        size={30}
-                        className="text-[var(--color-primary)]"
-                      />
+                  <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
+                    {images.map((image) => {
+                      const isMain =
+                        image.id === mainImageId;
 
-                      <span className="mt-3 font-bold">
-                        انتخاب تصویر
-                      </span>
+                      return (
+                        <div
+                          key={image.id}
+                          className={`group relative overflow-hidden rounded-xl border ${
+                            isMain
+                              ? "border-[#CB1B1B]"
+                              : "border-gray-3"
+                          }`}
+                        >
+                          <div className="relative aspect-square">
+                            <Image
+                              src={image.preview}
+                              alt="تصویر ملک"
+                              fill
+                              unoptimized
+                              className="object-cover"
+                            />
+                          </div>
 
-                      <input
-                        type="file"
-                        accept="image/*"
-                        multiple
-                        className="hidden"
-                        onChange={
-                          handleImageUpload
-                        }
-                      />
-                    </label>
-                  )}
-
-                  {!images.length && (
-                    <div className="mt-5">
-                      <p className="mb-2 text-xs font-bold text-[var(--color-gray-7)]">
-                        تصویر پیش‌فرض آگهی
-                      </p>
-
-                      <div className="relative h-[180px] max-w-[320px] overflow-hidden rounded-2xl border">
-                        <Image
-                          src="/images/default.png"
-                          alt="تصویر پیش‌فرض"
-                          fill
-                          className="object-cover"
-                        />
-                      </div>
-                    </div>
-                  )}
-
-                  {images.length >
-                    0 && (
-                    <div className="mt-5 grid grid-cols-2 gap-4 sm:grid-cols-3 lg:grid-cols-5">
-                      {images.map(
-                        (image) => (
-                          <div
-                            key={
-                              image.id
-                            }
-                            className={`relative overflow-hidden rounded-2xl border-2 ${
-                              image.id ===
-                              mainImageId
-                                ? "border-[var(--color-primary)]"
-                                : "border-transparent"
-                            }`}
-                          >
-                            <div className="relative aspect-square">
-                              <Image
-                                src={
-                                  image.preview
-                                }
-                                alt="ملک"
-                                fill
-                                unoptimized
-                                className="object-cover"
-                              />
+                          {isMain && (
+                            <div className="absolute right-2 top-2 rounded-md bg-[#CB1B1B] px-2 py-1 text-[10px] font-bold text-white">
+                              تصویر اصلی
                             </div>
+                          )}
 
-                            <div className="flex gap-2 p-2">
-                              {image.id !==
-                                mainImageId && (
-                                <button
-                                  type="button"
-                                  onClick={() =>
-                                    setMainImageId(
-                                      image.id,
-                                    )
-                                  }
-                                  className="flex-1 rounded-lg bg-[var(--color-gray-3)] p-2 text-xs font-bold"
-                                >
-                                  تصویر اصلی
-                                </button>
-                              )}
-
+                          <div className="absolute inset-x-0 bottom-0 flex items-center justify-between gap-2 bg-black/55 p-2 opacity-100 transition sm:opacity-0 sm:group-hover:opacity-100">
+                            {!isMain ? (
                               <button
                                 type="button"
                                 onClick={() =>
-                                  removeImage(
-                                    image.id,
+                                  setMainImageId(
+                                    image.id
                                   )
                                 }
-                                className="rounded-lg bg-red-600 p-2 text-white"
+                                className="rounded-md bg-white px-2 py-1.5 text-[10px] font-medium text-gray-13"
                               >
-                                <FiTrash2 />
+                                اصلی
                               </button>
-                            </div>
+                            ) : (
+                              <span />
+                            )}
+
+                            <button
+                              type="button"
+                              onClick={() =>
+                                handleRemoveImage(
+                                  image.id
+                                )
+                              }
+                              className="flex h-7 w-7 items-center justify-center rounded-md bg-white text-[#CB1B1B]"
+                              aria-label="حذف تصویر"
+                            >
+                              <FiTrash2
+                                size={14}
+                              />
+                            </button>
                           </div>
-                        ),
-                      )}
-                    </div>
-                  )}
-                </div>
-              </div>
-            </>
-          )}
-
-          {/* STEP 6 */}
-          {currentStep === 5 && (
-            <>
-              <SectionTitle
-                title="موقعیت"
-                description="شهر، محله و موقعیت ملک را مشخص کنید."
-              />
-
-              <div className="mb-6 grid gap-5 md:grid-cols-2">
-                <Field
-                  label="شهر"
-                  error={
-                    errors.city
-                  }
-                >
-                  <input
-                    value={
-                      formData.city
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      handleTextChange(
-                        event,
-                        "city",
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-
-                <Field
-                  label="محله"
-                  error={
-                    errors.district
-                  }
-                >
-                  <input
-                    value={
-                      formData.district
-                    }
-                    onChange={(
-                      event,
-                    ) =>
-                      handleTextChange(
-                        event,
-                        "district",
-                      )
-                    }
-                    className={inputClass}
-                  />
-                </Field>
-              </div>
-
-              <SubmitMap
-                position={
-                  formData.latitude !==
-                    null &&
-                  formData.longitude !==
-                    null
-                    ? [
-                        formData.latitude,
-                        formData.longitude,
-                      ]
-                    : null
-                }
-                onPositionChange={(
-                  position,
-                ) => {
-                  updateField(
-                    "latitude",
-                    position[0],
-                  );
-
-                  updateField(
-                    "longitude",
-                    position[1],
-                  );
-                }}
-              />
-
-              <ErrorText
-                text={
-                  errors.location
-                }
-              />
-            </>
-          )}
-
-          {/* STEP 7 */}
-          {currentStep === 6 && (
-            <>
-              <SectionTitle
-                title="پیش‌نمایش نهایی"
-                description="اطلاعات آگهی را قبل از ثبت بررسی کنید."
-              />
-
-              <div className="overflow-hidden rounded-2xl border border-[var(--color-gray-4)]">
-                <div className="relative aspect-[16/8]">
-                  <Image
-                    src={
-                      mainImage?.preview ??
-                      "/images/default.png"
-                    }
-                    alt={
-                      formData.title
-                    }
-                    fill
-                    unoptimized={
-                      !!mainImage
-                    }
-                    className="object-cover"
-                  />
-                </div>
-
-                <div className="p-5 md:p-7">
-                  <div className="flex flex-wrap gap-2">
-                    <SelectionChip
-                      label="نوع آگهی"
-                      value={
-                        formData.transactionType ??
-                        "-"
-                      }
-                    />
-
-                    <SelectionChip
-                      label="نوع ملک"
-                      value={
-                        formData.propertyType ??
-                        "-"
-                      }
-                    />
-                  </div>
-
-                  <h2 className="mt-5 text-2xl font-bold">
-                    {
-                      formData.title
-                    }
-                  </h2>
-
-                  <p className="mt-3 flex items-center gap-2 text-sm text-[var(--color-gray-8)]">
-                    <FiMapPin />
-
-                    {formData.city}،{" "}
-                    {
-                      formData.district
-                    }
-                  </p>
-
-                  <div className="mt-6 grid grid-cols-2 gap-3 md:grid-cols-5">
-                    <PreviewBox
-                      label="متراژ"
-                      value={`${formData.area} متر`}
-                    />
-
-                    <PreviewBox
-                      label="اتاق"
-                      value={
-                        formData.bedrooms
-                      }
-                    />
-
-                    <PreviewBox
-                      label="طبقه"
-                      value={
-                        formData.floor
-                      }
-                    />
-
-                    <PreviewBox
-                      label="کل طبقات"
-                      value={
-                        formData.totalFloors
-                      }
-                    />
-
-                    <PreviewBox
-                      label="سال ساخت"
-                      value={
-                        formData.yearBuilt
-                      }
-                    />
-                  </div>
-
-                  <div className="mt-6 rounded-2xl bg-red-50 p-5">
-                    {formData.transactionType ===
-                    "فروش" ? (
-                      <>
-                        <p className="text-xl font-bold text-[var(--color-primary)]">
-                          {
-                            formData.salePrice
-                          }{" "}
-                          تومان
-                        </p>
-
-                        <p className="mt-2 text-sm font-bold">
-                          {numberToExactText(
-                            formData.salePrice,
-                          )}
-                        </p>
-                      </>
-                    ) : (
-                      <div className="space-y-4">
-                        <div>
-                          <p className="font-bold text-[var(--color-primary)]">
-                            ودیعه:{" "}
-                            {
-                              formData.deposit
-                            }{" "}
-                            تومان
-                          </p>
-
-                          <p className="mt-1 text-sm">
-                            {numberToExactText(
-                              formData.deposit,
-                            )}
-                          </p>
                         </div>
+                      );
+                    })}
 
-                        <div>
-                          <p className="font-bold text-[var(--color-primary)]">
-                            اجاره:{" "}
-                            {
-                              formData.rent
-                            }{" "}
-                            تومان
-                          </p>
+                    {images.length < 10 && (
+                      <label className="flex aspect-square cursor-pointer flex-col items-center justify-center rounded-xl border border-dashed border-gray-4 bg-gray-1 px-3 text-center text-gray-8 transition hover:border-[#CB1B1B] hover:bg-[#CB1B1B]/5 hover:text-[#CB1B1B]">
+                        <FiUploadCloud
+                          size={25}
+                        />
 
-                          <p className="mt-1 text-sm">
-                            {numberToExactText(
-                              formData.rent,
-                            )}
-                          </p>
-                        </div>
-                      </div>
+                        <span className="mt-2 text-xs font-medium sm:text-sm">
+                          افزودن تصویر
+                        </span>
+
+                        <input
+                          type="file"
+                          accept="image/jpeg,image/png,image/webp"
+                          multiple
+                          className="hidden"
+                          onChange={
+                            handleImageUpload
+                          }
+                        />
+                      </label>
                     )}
                   </div>
 
-                  {formData.amenities
-                    .length > 0 && (
-                    <div className="mt-6 flex flex-wrap gap-2">
-                      {formData.amenities.map(
-                        (item) => (
-                          <span
-                            key={
-                              item
-                            }
-                            className="rounded-lg bg-[var(--color-gray-3)] px-3 py-2 text-xs font-bold"
-                          >
-                            {
-                              item
-                            }
-                          </span>
-                        ),
-                      )}
+                  {images.length > 0 && (
+                    <div className="mt-4 flex items-center gap-2 rounded-xl bg-gray-1 px-4 py-3 text-xs leading-5 text-gray-7">
+                      <FiImage
+                        size={16}
+                        className="shrink-0 text-[#CB1B1B]"
+                      />
+
+                      اولین تصویر انتخاب‌شده به عنوان
+                      تصویر اصلی آگهی در نظر گرفته می‌شود.
                     </div>
                   )}
-
-                  <p className="mt-6 whitespace-pre-line leading-8 text-[var(--color-gray-8)]">
-                    {
-                      formData.description
-                    }
-                  </p>
                 </div>
               </div>
-            </>
-          )}
+            )}
 
-          {/* SUBMIT ERROR */}
-          {submitError && (
-            <div className="mt-6 rounded-xl border border-red-200 bg-red-50 px-4 py-3 text-sm font-bold text-red-600">
-              {submitError}
-            </div>
-          )}
+            {/* STEP 5 */}
+            {currentStep === 5 && (
+              <div>
+                <h2 className="text-lg font-bold text-gray-13 sm:text-xl">
+                  موقعیت ملک
+                </h2>
 
-          {/* NAV */}
-          <div className="mt-8 flex justify-between border-t pt-6">
-            <button
-              type="button"
-              disabled={
-                currentStep === 0 ||
-                isSubmitting
-              }
-              onClick={
-                handlePrevious
-              }
-              className="flex h-12 items-center gap-2 rounded-xl border px-5 font-bold disabled:opacity-40"
-            >
-              <FiArrowRight />
-              قبلی
-            </button>
+                <p className="mt-2 text-sm leading-6 text-gray-7">
+                  شهر، منطقه و موقعیت دقیق ملک را مشخص
+                  کنید.
+                </p>
 
-            {currentStep <
-            steps.length - 1 ? (
+                <div className="mt-6 grid grid-cols-1 gap-5 sm:grid-cols-2">
+                  <InputField
+                    label="شهر"
+                    value={formData.city}
+                    onChange={(event) =>
+                      updateFormData(
+                        "city",
+                        event.target.value
+                      )
+                    }
+                    placeholder="مثلاً تهران"
+                    error={errors.city}
+                  />
+
+                  <InputField
+                    label="منطقه / محله"
+                    value={formData.district}
+                    onChange={(event) =>
+                      updateFormData(
+                        "district",
+                        event.target.value
+                      )
+                    }
+                    placeholder="مثلاً سعادت‌آباد"
+                    error={errors.district}
+                  />
+                </div>
+
+                <div className="mt-6 overflow-hidden rounded-xl border border-gray-3">
+                  <SubmitMap
+                    position={[
+                      formData.latitude,
+                      formData.longitude,
+                    ]}
+                    onPositionChange={(
+                      position
+                    ) => {
+                      setFormData(
+                        (previous) => ({
+                          ...previous,
+                          latitude:
+                            position[0],
+                          longitude:
+                            position[1],
+                        })
+                      );
+
+                      setErrors(
+                        (previous) => ({
+                          ...previous,
+                          location:
+                            undefined,
+                        })
+                      );
+                    }}
+                  />
+                </div>
+
+                {renderError(
+                  errors.location
+                )}
+
+                <div className="mt-4 flex items-start gap-3 rounded-xl bg-gray-1 px-4 py-3">
+                  <FiMapPin
+                    size={18}
+                    className="mt-0.5 shrink-0 text-[#CB1B1B]"
+                  />
+
+                  <div>
+                    <p className="text-xs text-gray-7">
+                      موقعیت انتخاب‌شده
+                    </p>
+
+                    <p className="mt-1 text-xs font-medium leading-6 text-gray-10">
+                      {formData.latitude.toFixed(
+                        5
+                      )}
+                      ،{" "}
+                      {formData.longitude.toFixed(
+                        5
+                      )}
+                    </p>
+                  </div>
+                </div>
+              </div>
+            )}
+
+            {/* STEP 6 */}
+            {currentStep === 6 && (
+              <div>
+                <div>
+                  <h2 className="text-lg font-bold text-gray-13 sm:text-xl">
+                    پیش‌نمایش آگهی
+                  </h2>
+
+                  <p className="mt-2 text-sm leading-6 text-gray-7">
+                    این همان اطلاعاتی است که کاربر در آگهی
+                    خواهد دید.
+                  </p>
+                </div>
+
+                <div className="mt-6 overflow-hidden rounded-2xl border border-gray-3">
+                  {/* Image */}
+                  <div className="relative aspect-[16/9] bg-gray-2 sm:aspect-[16/8]">
+                    {selectedMainImage ? (
+                      <Image
+                        src={
+                          selectedMainImage.preview
+                        }
+                        alt={
+                          formData.title ||
+                          "تصویر ملک"
+                        }
+                        fill
+                        unoptimized
+                        className="object-cover"
+                      />
+                    ) : (
+                      <div className="flex h-full flex-col items-center justify-center gap-2 text-gray-7">
+                        <FiImage
+                          size={28}
+                        />
+
+                        <span className="text-sm">
+                          تصویری برای آگهی انتخاب نشده است.
+                        </span>
+                      </div>
+                    )}
+
+                    <div className="absolute right-3 top-3 flex max-w-[calc(100%-24px)] flex-wrap gap-2 sm:right-4 sm:top-4">
+                      {formData.transactionType && (
+                        <span className="rounded-lg bg-[#CB1B1B] px-2.5 py-1.5 text-[11px] font-bold text-white sm:px-3 sm:text-xs">
+                          {
+                            formData.transactionType
+                          }
+                        </span>
+                      )}
+
+                      {formData.propertyType && (
+                        <span className="rounded-lg bg-white/95 px-2.5 py-1.5 text-[11px] font-bold text-gray-13 shadow-sm sm:px-3 sm:text-xs">
+                          {formData.propertyType}
+                        </span>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="p-4 sm:p-6 md:p-7">
+                    {/* Title */}
+                    <div>
+                      <h3 className="text-lg font-bold leading-8 text-gray-13 sm:text-xl md:text-2xl">
+                        {formData.title ||
+                          "عنوان آگهی"}
+                      </h3>
+
+                      {(formData.city ||
+                        formData.district) && (
+                        <div className="mt-2.5 flex items-start gap-2 text-sm text-gray-8">
+                          <FiMapPin
+                            size={17}
+                            className="mt-0.5 shrink-0 text-[#CB1B1B]"
+                          />
+
+                          <span>
+                            {[
+                              formData.city,
+                              formData.district,
+                            ]
+                              .filter(Boolean)
+                              .join("، ")}
+                          </span>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Main Specs */}
+                    <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-4 sm:gap-3">
+                      <PreviewSpec
+                        label="متراژ"
+                        value={
+                          formData.area
+                            ? `${formatPersianNumber(
+                                formData.area
+                              )} متر`
+                            : "—"
+                        }
+                      />
+
+                      <PreviewSpec
+                        label="اتاق خواب"
+                        value={
+                          formData.bedrooms
+                            ? `${toPersianDigits(
+                                formData.bedrooms
+                              )} خواب`
+                            : "—"
+                        }
+                      />
+
+                      <PreviewSpec
+                        label="طبقه"
+                        value={
+                          formData.floor
+                            ? toPersianDigits(
+                                formData.floor
+                              )
+                            : "—"
+                        }
+                      />
+
+                      <PreviewSpec
+                        label="سال ساخت"
+                        value={
+                          formData.yearBuilt
+                            ? toPersianDigits(
+                                formData.yearBuilt
+                              )
+                            : "—"
+                        }
+                      />
+                    </div>
+
+                    {/* Additional Specs */}
+                    <div className="mt-2.5 grid grid-cols-1 gap-2.5 sm:grid-cols-2">
+                      <PreviewRow
+                        label="نوع معامله"
+                        value={getTransactionLabel(
+                          formData.transactionType
+                        )}
+                      />
+
+                      <PreviewRow
+                        label="نوع ملک"
+                        value={getPropertyLabel(
+                          formData.propertyType
+                        )}
+                      />
+
+                      {formData.totalFloors && (
+                        <PreviewRow
+                          label="تعداد کل طبقات"
+                          value={toPersianDigits(
+                            formData.totalFloors
+                          )}
+                        />
+                      )}
+                    </div>
+
+                    {/* Price */}
+                    <div className="mt-5 rounded-2xl bg-[#CB1B1B]/5 p-4 sm:p-5">
+                      <h4 className="text-sm font-bold text-gray-13">
+                        قیمت
+                      </h4>
+
+                      {formData.transactionType ===
+                        "فروش" && (
+                        <div className="mt-3">
+                          <p className="text-xs text-gray-7">
+                            قیمت فروش
+                          </p>
+
+                          <p className="mt-1 text-lg font-bold text-[#CB1B1B] sm:text-xl">
+                            {formData.salePrice
+                              ? `${formatPersianNumber(
+                                  formData.salePrice
+                                )} تومان`
+                              : "—"}
+                          </p>
+                        </div>
+                      )}
+
+                      {formData.transactionType ===
+                        "اجاره" && (
+                        <div className="mt-3 grid grid-cols-1 gap-4 sm:grid-cols-2">
+                          <div>
+                            <p className="text-xs text-gray-7">
+                              ودیعه
+                            </p>
+
+                            <p className="mt-1 text-base font-bold text-[#CB1B1B] sm:text-lg">
+                              {formData.deposit
+                                ? `${formatPersianNumber(
+                                    formData.deposit
+                                  )} تومان`
+                                : "—"}
+                            </p>
+                          </div>
+
+                          <div>
+                            <p className="text-xs text-gray-7">
+                              اجاره ماهانه
+                            </p>
+
+                            <p className="mt-1 text-base font-bold text-[#CB1B1B] sm:text-lg">
+                              {formData.rent
+                                ? `${formatPersianNumber(
+                                    formData.rent
+                                  )} تومان`
+                                : "—"}
+                            </p>
+                          </div>
+                        </div>
+                      )}
+                    </div>
+
+                    {/* Amenities */}
+                    {formData.amenities.length >
+                      0 && (
+                      <div className="mt-6">
+                        <h4 className="text-sm font-bold text-gray-13">
+                          امکانات
+                        </h4>
+
+                        <div className="mt-3 flex flex-wrap gap-2">
+                          {formData.amenities.map(
+                            (amenity) => (
+                              <span
+                                key={amenity}
+                                className="rounded-lg bg-gray-2 px-3 py-2 text-xs text-gray-10"
+                              >
+                                {amenity}
+                              </span>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Description */}
+                    <div className="mt-6">
+                      <h4 className="text-sm font-bold text-gray-13">
+                        توضیحات
+                      </h4>
+
+                      <p className="mt-3 whitespace-pre-line text-sm leading-7 text-gray-8">
+                        {formData.description ||
+                          "توضیحاتی برای این آگهی وارد نشده است."}
+                      </p>
+                    </div>
+
+                    {/* All Images */}
+                    {images.length > 0 && (
+                      <div className="mt-6">
+                        <div className="flex items-center justify-between">
+                          <h4 className="text-sm font-bold text-gray-13">
+                            تصاویر
+                          </h4>
+
+                          <span className="text-xs text-gray-7">
+                            {toPersianDigits(
+                              images.length
+                            )}{" "}
+                            تصویر
+                          </span>
+                        </div>
+
+                        <div className="mt-3 grid grid-cols-3 gap-2 sm:grid-cols-4 md:grid-cols-5">
+                          {images.map(
+                            (image) => (
+                              <div
+                                key={
+                                  image.id
+                                }
+                                className={`relative aspect-square overflow-hidden rounded-xl border ${
+                                  image.id ===
+                                  mainImageId
+                                    ? "border-[#CB1B1B]"
+                                    : "border-gray-3"
+                                }`}
+                              >
+                                <Image
+                                  src={
+                                    image.preview
+                                  }
+                                  alt="تصویر ملک"
+                                  fill
+                                  unoptimized
+                                  className="object-cover"
+                                />
+
+                                {image.id ===
+                                  mainImageId && (
+                                  <span className="absolute right-1.5 top-1.5 rounded-md bg-[#CB1B1B] px-1.5 py-1 text-[9px] font-bold text-white">
+                                    اصلی
+                                  </span>
+                                )}
+                              </div>
+                            )
+                          )}
+                        </div>
+                      </div>
+                    )}
+
+                    {/* Location */}
+                    <div className="mt-6 rounded-xl border border-gray-3 p-4">
+                      <div className="flex items-start gap-3">
+                        <FiMapPin
+                          size={19}
+                          className="mt-0.5 shrink-0 text-[#CB1B1B]"
+                        />
+
+                        <div>
+                          <h4 className="text-sm font-bold text-gray-13">
+                            موقعیت ملک
+                          </h4>
+
+                          <p className="mt-1 text-xs leading-6 text-gray-8">
+                            {[
+                              formData.city,
+                              formData.district,
+                            ]
+                              .filter(Boolean)
+                              .join("، ") ||
+                              "موقعیت وارد نشده است"}
+                          </p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+
+                {submitError && (
+                  <div className="mt-5 rounded-xl border border-[#CB1B1B]/20 bg-[#CB1B1B]/5 px-4 py-3 text-sm leading-6 text-[#CB1B1B]">
+                    {submitError}
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Navigation */}
+            <div className="mt-7 flex flex-col-reverse gap-3 border-t border-gray-3 pt-5 sm:mt-9 sm:flex-row sm:items-center sm:justify-between sm:pt-6">
               <button
                 type="button"
-                onClick={handleNext}
-                className="flex h-12 items-center gap-2 rounded-xl bg-[var(--color-primary)] px-6 font-bold text-white"
-              >
-                بعدی
-                <FiArrowLeft />
-              </button>
-            ) : (
-              <button
-                type="button"
-                onClick={
-                  handleSubmit
-                }
+                onClick={handlePrevious}
                 disabled={
+                  currentStep === 0 ||
                   isSubmitting
                 }
-                className="flex h-12 items-center gap-2 rounded-xl bg-green-600 px-6 font-bold text-white transition disabled:cursor-not-allowed disabled:opacity-60"
+                className={`flex w-full items-center justify-center gap-2 rounded-xl px-5 py-3 text-sm font-medium transition sm:w-auto ${
+                  currentStep === 0 ||
+                  isSubmitting
+                    ? "cursor-not-allowed bg-gray-2 text-gray-5"
+                    : "bg-gray-2 text-gray-11 hover:bg-gray-3"
+                }`}
               >
-                <FiCheck />
-
-                {isSubmitting
-                  ? "در حال ثبت..."
-                  : "ثبت نهایی آگهی"}
+                <FiArrowRight
+                  size={17}
+                />
+                مرحله قبل
               </button>
-            )}
+
+              {currentStep <
+              steps.length - 1 ? (
+                <button
+                  type="button"
+                  onClick={handleNext}
+                  disabled={isSubmitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#CB1B1B] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#b81717] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                >
+                  مرحله بعد
+
+                  <FiArrowLeft
+                    size={17}
+                  />
+                </button>
+              ) : (
+                <button
+                  type="button"
+                  onClick={handleSubmit}
+                  disabled={isSubmitting}
+                  className="flex w-full items-center justify-center gap-2 rounded-xl bg-[#CB1B1B] px-6 py-3 text-sm font-bold text-white transition hover:bg-[#b81717] disabled:cursor-not-allowed disabled:opacity-60 sm:w-auto"
+                >
+                  {isSubmitting ? (
+                    <>
+                      <span className="h-4 w-4 animate-spin rounded-full border-2 border-white border-t-transparent" />
+                      در حال ثبت...
+                    </>
+                  ) : (
+                    <>
+                      ثبت نهایی آگهی
+                      <FiCheck size={17} />
+                    </>
+                  )}
+                </button>
+              )}
+            </div>
           </div>
+
+          {/* Desktop Live Summary */}
+          <aside className="hidden lg:block lg:sticky lg:top-6">
+            {liveSummary}
+          </aside>
         </div>
-      </section>
-    </main>
-  );
-}
-
-const inputClass =
-  "h-12 w-full rounded-xl border border-[var(--color-gray-4)] bg-white px-4 text-sm outline-none transition focus:border-[var(--color-primary)]";
-
-function SectionTitle({
-  title,
-  description,
-}: {
-  title: string;
-  description: string;
-}) {
-  return (
-    <div className="mb-8">
-      <h2 className="text-xl font-bold">
-        {title}
-      </h2>
-
-      <p className="mt-2 text-sm leading-7 text-[var(--color-gray-8)]">
-        {description}
-      </p>
+      </div>
     </div>
   );
 }
 
-function Field({
-  label,
-  error,
-  children,
-}: {
+/* -------------------------------------------------------------------------- */
+/*                                  Components                                */
+/* -------------------------------------------------------------------------- */
+
+type InputFieldProps = {
   label: string;
+  value: string;
+  onChange: (
+    event: ChangeEvent<HTMLInputElement>
+  ) => void;
+  placeholder?: string;
+  suffix?: string;
   error?: string;
-  children: ReactNode;
-}) {
+  inputMode?: "text" | "numeric";
+};
+
+function InputField({
+  label,
+  value,
+  onChange,
+  placeholder,
+  suffix,
+  error,
+  inputMode = "text",
+}: InputFieldProps) {
   return (
     <div>
-      <label className="mb-2 block text-sm font-bold">
+      <label className="mb-2 block text-sm font-medium text-gray-12">
         {label}
       </label>
 
-      {children}
+      <div className="relative">
+        <input
+          value={value}
+          onChange={onChange}
+          placeholder={placeholder}
+          inputMode={inputMode}
+          className={`w-full rounded-xl border bg-white px-4 py-3 text-sm text-gray-13 outline-none transition placeholder:text-gray-6 focus:border-[#CB1B1B] ${
+            error
+              ? "border-[#CB1B1B]"
+              : "border-gray-3"
+          } ${suffix ? "pl-20" : ""}`}
+        />
 
-      <ErrorText text={error} />
+        {suffix && (
+          <span className="absolute left-4 top-1/2 -translate-y-1/2 text-xs text-gray-7">
+            {suffix}
+          </span>
+        )}
+      </div>
+
+      {error && (
+        <p className="mt-2 text-xs font-medium text-[#CB1B1B]">
+          {error}
+        </p>
+      )}
     </div>
   );
 }
 
-function ErrorText({
-  text,
-}: {
-  text?: string;
-}) {
-  if (!text) {
-    return null;
-  }
-
-  return (
-    <p className="mt-2 text-xs font-bold text-red-600">
-      {text}
-    </p>
-  );
-}
-
-function ChoiceCard({
-  selected,
-  title,
-  description,
-  icon,
-  onClick,
-}: {
-  selected: boolean;
-  title: string;
-  description: string;
-  icon?: ReactNode;
-  onClick: () => void;
-}) {
-  return (
-    <button
-      type="button"
-      onClick={onClick}
-      className={`rounded-2xl border p-5 text-right transition ${
-        selected
-          ? "border-[var(--color-primary)] bg-red-50"
-          : "border-[var(--color-gray-4)]"
-      }`}
-    >
-      {icon && (
-        <div className="mb-3 text-xl text-[var(--color-primary)]">
-          {icon}
-        </div>
-      )}
-
-      <p className="font-bold">
-        {title}
-      </p>
-
-      <p className="mt-1 text-xs text-[var(--color-gray-7)]">
-        {description}
-      </p>
-
-      {selected && (
-        <div className="mt-3 flex items-center gap-2 text-xs font-bold text-[var(--color-primary)]">
-          <FiCheck />
-          انتخاب شده
-        </div>
-      )}
-    </button>
-  );
-}
-
-function SelectionChip({
+function SummaryItem({
   label,
   value,
 }: {
@@ -1976,76 +2213,54 @@ function SelectionChip({
   value: string;
 }) {
   return (
-    <div className="rounded-lg border border-[var(--color-gray-4)] bg-white px-3 py-2 text-xs">
-      <span className="text-[var(--color-gray-7)]">
-        {label}:{" "}
-      </span>
-
-      <span className="font-bold">
-        {value}
-      </span>
-    </div>
-  );
-}
-
-function PriceField({
-  label,
-  value,
-  error,
-  onChange,
-}: {
-  label: string;
-  value: string;
-  error?: string;
-  onChange: (
-    event: ChangeEvent<HTMLInputElement>,
-  ) => void;
-}) {
-  return (
-    <Field
-      label={label}
-      error={error}
-    >
-      <input
-        type="text"
-        inputMode="numeric"
-        dir="ltr"
-        value={value}
-        onChange={onChange}
-        placeholder="12,540,000,000"
-        className={`${inputClass} text-right`}
-      />
-
-      {value && (
-        <div className="mt-3 rounded-xl bg-red-50 px-4 py-3">
-          <p className="text-sm font-bold text-[var(--color-primary)]">
-            {numberToExactText(
-              value,
-            )}
-          </p>
-        </div>
-      )}
-    </Field>
-  );
-}
-
-function PreviewBox({
-  label,
-  value,
-}: {
-  label: string;
-  value: string;
-}) {
-  return (
-    <div className="rounded-xl bg-[var(--color-gray-2)] p-3 text-center">
-      <p className="text-xs text-[var(--color-gray-7)]">
+    <div className="rounded-xl bg-gray-1 p-3">
+      <p className="text-[10px] text-gray-7">
         {label}
       </p>
 
-      <p className="mt-1 font-bold">
+      <p className="mt-1 text-xs font-bold text-gray-12">
         {value}
       </p>
     </div>
   );
 }
 
+function PreviewSpec({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="rounded-xl bg-gray-1 p-3.5 sm:p-4">
+      <p className="text-[10px] text-gray-7 sm:text-xs">
+        {label}
+      </p>
+
+      <p className="mt-1.5 text-sm font-bold text-gray-13 sm:text-base">
+        {value}
+      </p>
+    </div>
+  );
+}
+
+function PreviewRow({
+  label,
+  value,
+}: {
+  label: string;
+  value: string;
+}) {
+  return (
+    <div className="flex items-center justify-between gap-4 rounded-xl border border-gray-3 p-3.5">
+      <span className="text-xs text-gray-7">
+        {label}
+      </span>
+
+      <span className="text-xs font-bold text-gray-13 sm:text-sm">
+        {value}
+      </span>
+    </div>
+  );
+}

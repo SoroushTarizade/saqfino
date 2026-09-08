@@ -244,6 +244,8 @@ export async function POST(
 
       latitude,
       longitude,
+
+      images,
     } = body;
 
     /*
@@ -678,7 +680,152 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 19. Create property
+     * 19. Validate images
+     * ----------------------------------------
+     *
+     * Images are uploaded to Cloudinary
+     * before this request reaches this API.
+     *
+     * The frontend sends only the returned
+     * Cloudinary secure URLs.
+     */
+
+    let propertyImages: string[] = [];
+
+    if (
+      images !== undefined
+    ) {
+      if (
+        !Array.isArray(
+          images,
+        )
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "اطلاعات تصاویر معتبر نیست.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+
+      if (
+        images.length >
+        10
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "حداکثر ۱۰ تصویر برای هر آگهی مجاز است.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
+
+      const cloudinaryCloudName =
+        process.env
+          .CLOUDINARY_CLOUD_NAME;
+
+      if (
+        !cloudinaryCloudName
+      ) {
+        throw new Error(
+          "CLOUDINARY_CLOUD_NAME is not configured",
+        );
+      }
+
+      for (
+        const imageUrl of images
+      ) {
+        if (
+          typeof imageUrl !==
+          "string"
+        ) {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "یکی از آدرس‌های تصویر معتبر نیست.",
+            },
+            {
+              status: 400,
+            },
+          );
+        }
+
+        try {
+          const parsedUrl =
+            new URL(
+              imageUrl,
+            );
+
+          const isValidCloudinaryUrl =
+            parsedUrl.protocol ===
+              "https:" &&
+            parsedUrl.hostname ===
+              "res.cloudinary.com" &&
+            parsedUrl.pathname.startsWith(
+              `/${cloudinaryCloudName}/`,
+            );
+
+          if (
+            !isValidCloudinaryUrl
+          ) {
+            return NextResponse.json(
+              {
+                success: false,
+                message:
+                  "آدرس یکی از تصاویر معتبر نیست.",
+              },
+              {
+                status: 400,
+              },
+            );
+          }
+        } catch {
+          return NextResponse.json(
+            {
+              success: false,
+              message:
+                "آدرس یکی از تصاویر معتبر نیست.",
+            },
+            {
+              status: 400,
+            },
+          );
+        }
+
+        propertyImages.push(
+          imageUrl,
+        );
+      }
+    }
+
+    /*
+     * ----------------------------------------
+     * 20. Use default image when no image
+     *     was uploaded
+     * ----------------------------------------
+     */
+
+    if (
+      propertyImages.length ===
+      0
+    ) {
+      propertyImages = [
+        "/images/default.png",
+      ];
+    }
+
+    /*
+     * ----------------------------------------
+     * 21. Create property
      * ----------------------------------------
      *
      * IMPORTANT:
@@ -752,16 +899,12 @@ export async function POST(
           numericLongitude,
 
         /*
-         * Image upload will be connected
-         * in the next step.
-         *
-         * For now every property gets
-         * the default image.
+         * Cloudinary image URLs
+         * or the local default image.
          */
 
-        images: [
-          "/images/default.png",
-        ],
+        images:
+          propertyImages,
 
         /*
          * New advertisements should
@@ -773,7 +916,7 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 20. Return successful response
+     * 22. Return successful response
      * ----------------------------------------
      */
 
@@ -792,6 +935,9 @@ export async function POST(
 
           title:
             property.title,
+
+          images:
+            property.images,
         },
       },
       {
