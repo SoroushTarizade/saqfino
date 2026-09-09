@@ -23,18 +23,18 @@ export async function GET(
           success: false,
           message: "شناسه ملک نامعتبر است.",
         },
-        { status: 400 },
+        {
+          status: 400,
+        },
       );
     }
 
     await connectDB();
 
-    const property =
-      await Property.findOne({
-        _id: id,
-        transactionType: "buy",
-        status: "active",
-      }).lean();
+    const property = await Property.findOne({
+      _id: id,
+      status: "active",
+    }).lean();
 
     if (!property) {
       return NextResponse.json(
@@ -42,18 +42,14 @@ export async function GET(
           success: false,
           message: "ملک مورد نظر پیدا نشد.",
         },
-        { status: 404 },
+        {
+          status: 404,
+        },
       );
     }
 
     const formattedProperty = {
-      id: Number(
-        property._id
-          .toString()
-          .slice(-8),
-      ),
-
-      mongoId: property._id.toString(),
+      id: property._id.toString(),
 
       image:
         property.images?.[0] ??
@@ -70,20 +66,24 @@ export async function GET(
 
       district: property.district,
 
-      price: property.salePrice
-        ? Math.round(
-            property.salePrice /
-              1_000_000,
-          )
-        : 0,
+      deposit:
+        property.deposit ?? 0,
+
+      rent:
+        property.rent ?? 0,
+
+      price:
+        property.salePrice
+          ? Math.round(
+              property.salePrice / 1_000_000,
+            )
+          : 0,
 
       area: property.area,
 
-      bedrooms:
-        property.bedrooms,
+      bedrooms: property.bedrooms,
 
-      floor:
-        property.floor,
+      floor: property.floor,
 
       totalFloors:
         property.totalFloors,
@@ -91,8 +91,7 @@ export async function GET(
       yearBuilt:
         property.yearBuilt,
 
-      type:
-        property.propertyType,
+      type: property.propertyType,
 
       amenities:
         property.amenities ?? [],
@@ -100,27 +99,26 @@ export async function GET(
       description:
         property.description,
 
-      lat:
-        property.latitude,
+      lat: property.latitude,
 
-      lng:
-        property.longitude,
+      lng: property.longitude,
 
       createdAt:
         property.createdAt,
+
+      transactionType:
+        property.transactionType,
     };
 
     return NextResponse.json(
       {
         success: true,
-        property:
-          formattedProperty,
+        property: formattedProperty,
       },
       {
         status: 200,
         headers: {
-          "Cache-Control":
-            "no-store",
+          "Cache-Control": "no-store",
         },
       },
     );
@@ -134,9 +132,11 @@ export async function GET(
       {
         success: false,
         message:
-          "خطا در دریافت اطلاعات ملک.",
+          "خطایی در دریافت اطلاعات ملک رخ داد.",
       },
-      { status: 500 },
+      {
+        status: 500,
+      },
     );
   }
 }

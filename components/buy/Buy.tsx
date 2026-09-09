@@ -4,7 +4,11 @@ import { formatPrice } from "@/lib/formatPrice";
 import dynamic from "next/dynamic";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
-import React, { useEffect, useMemo, useState } from "react";
+import React, {
+  useEffect,
+  useState,
+} from "react";
+
 import { FaFilter } from "react-icons/fa";
 import {
   FiBookmark,
@@ -16,19 +20,14 @@ import {
   FiX,
 } from "react-icons/fi";
 
-import {
-  getSubmittedBuyProperties,
-  type SubmittedProperty,
-} from "@/lib/submittedProperties";
+import type { BuyProperty } from "@/data/buyProperties";
 
-import {
-  buyProperties,
-  type BuyProperty,
-} from "@/data/buyProperties";
-
-const BuyMap = dynamic(() => import("./BuyMap"), {
-  ssr: false,
-});
+const BuyMap = dynamic(
+  () => import("./BuyMap"),
+  {
+    ssr: false,
+  },
+);
 
 const districts = [
   "همه مناطق",
@@ -94,7 +93,9 @@ function FilterDropdown({
     <div className="relative min-w-[130px] flex-1 sm:flex-none">
       <select
         value={value}
-        onChange={(event) => onChange(event.target.value)}
+        onChange={(event) =>
+          onChange(event.target.value)
+        }
         className="
           h-12
           w-full
@@ -116,7 +117,10 @@ function FilterDropdown({
         "
       >
         {options.map((option) => (
-          <option key={option} value={option}>
+          <option
+            key={option}
+            value={option}
+          >
             {option}
           </option>
         ))}
@@ -141,8 +145,12 @@ function FilterDropdown({
 type PropertyCardProps = {
   property: BuyProperty;
   bookmarked: boolean;
-  onBookmark: (id: number) => void;
-  onSelect: (property: BuyProperty) => void;
+  onBookmark: (
+    id: string | number,
+  ) => void;
+  onSelect: (
+    property: BuyProperty,
+  ) => void;
 };
 
 function PropertyCard({
@@ -151,13 +159,34 @@ function PropertyCard({
   onBookmark,
   onSelect,
 }: PropertyCardProps) {
-  const pricePerMeter = Math.round(
-    property.price / property.area,
-  );
+  const pricePerMeter =
+    property.area > 0
+      ? Math.round(
+          property.price /
+            property.area,
+        )
+      : 0;
+
+  const propertyTypeLabel =
+    property.type === "apartment"
+      ? "آپارتمان"
+      : property.type === "house"
+        ? "خانه"
+        : property.type === "villa"
+          ? "ویلا"
+          : property.type ===
+              "commercial"
+            ? "تجاری"
+            : property.type ===
+                "land"
+              ? "زمین"
+              : property.type;
 
   return (
     <article
-      onClick={() => onSelect(property)}
+      onClick={() =>
+        onSelect(property)
+      }
       className="
         group
         cursor-pointer
@@ -175,10 +204,14 @@ function PropertyCard({
     >
       <div className="relative overflow-hidden">
         <Image
-          src={property.image || "/images/default.png"}
+          src={
+            property.image ||
+            "/images/default.png"
+          }
           alt={property.title}
           width={288}
           height={167}
+          loading="eager"
           className="
             h-[167px]
             w-full
@@ -193,7 +226,10 @@ function PropertyCard({
           type="button"
           onClick={(event) => {
             event.stopPropagation();
-            onBookmark(property.id);
+
+            onBookmark(
+              property.id,
+            );
           }}
           aria-label="ذخیره آگهی"
           className="
@@ -222,48 +258,64 @@ function PropertyCard({
         </button>
       </div>
 
-      <div className="flex min-h-[185px] flex-col gap-2 p-4">
+      <div className="flex min-h-[205px] flex-col gap-2 p-4">
         <div className="flex items-center justify-between gap-3">
           <span className="min-w-0 truncate text-sm font-bold text-gray-12">
             {property.title}
           </span>
 
           <span className="shrink-0 rounded-full bg-primary-tint-1 px-2 py-1 text-xs text-primary">
-            {property.type}
+            {propertyTypeLabel}
           </span>
         </div>
 
         <p className="text-sm text-gray-9">
-          {property.area.toLocaleString("fa-IR")} متر،{" "}
-          {property.location}
+          {property.area.toLocaleString(
+            "fa-IR",
+          )}{" "}
+          متر، {property.location}
         </p>
 
         <div className="mt-1 flex items-center gap-2 text-xs text-gray-8">
           <span>
-            {property.bedrooms.toLocaleString("fa-IR")} خواب
+            {property.bedrooms.toLocaleString(
+              "fa-IR",
+            )}{" "}
+            خواب
           </span>
 
           <span>•</span>
 
           <span>
-            طبقه {property.floor.toLocaleString("fa-IR")}
+            طبقه{" "}
+            {property.floor.toLocaleString(
+              "fa-IR",
+            )}
           </span>
 
           <span>•</span>
 
           <span>
-            ساخت {property.yearBuilt.toLocaleString("fa-IR")}
+            ساخت{" "}
+            {property.yearBuilt.toLocaleString(
+              "fa-IR",
+            )}
           </span>
         </div>
 
         <div className="mt-auto border-t border-gray-4 pt-3">
           <p className="text-base font-bold text-gray-13">
-            {formatPrice(property.price)}
+            {formatPrice(
+              property.price,
+            )}
           </p>
 
           <p className="mt-1 text-xs text-gray-8">
             متری{" "}
-            {pricePerMeter.toLocaleString("fa-IR")} میلیون تومان
+            {pricePerMeter.toLocaleString(
+              "fa-IR",
+            )}{" "}
+            میلیون تومان
           </p>
         </div>
       </div>
@@ -274,218 +326,209 @@ function PropertyCard({
 export default function Buy() {
   const router = useRouter();
 
-  const [search, setSearch] = useState("");
-  const [district, setDistrict] = useState("همه مناطق");
+  const [search, setSearch] =
+    useState("");
+
+  const [district, setDistrict] =
+    useState("همه مناطق");
+
   const [propertyType, setPropertyType] =
     useState("همه انواع");
-  const [price, setPrice] = useState("همه قیمت‌ها");
-  const [area, setArea] = useState("همه متراژها");
+
+  const [price, setPrice] =
+    useState("همه قیمت‌ها");
+
+  const [area, setArea] =
+    useState("همه متراژها");
+
   const [bedroom, setBedroom] =
     useState("همه تعداد اتاق‌ها");
+
   const [buildYear, setBuildYear] =
     useState("همه سال‌ها");
 
-  const [sort, setSort] = useState("جدیدترین");
+  const [sort, setSort] =
+    useState("جدیدترین");
 
-  const [showMoreFilters, setShowMoreFilters] =
-    useState(false);
+  const [
+    showMoreFilters,
+    setShowMoreFilters,
+  ] = useState(false);
 
-  const [bookmarked, setBookmarked] = useState<number[]>(
-    [],
+  const [bookmarked, setBookmarked] =
+    useState<
+      (string | number)[]
+    >([]);
+
+  const [
+    selectedProperty,
+    setSelectedProperty,
+  ] = useState<BuyProperty | null>(
+    null,
   );
 
-  const [selectedProperty, setSelectedProperty] =
-    useState<BuyProperty | null>(null);
+  const [properties, setProperties] =
+    useState<BuyProperty[]>([]);
 
-  const [submittedProperties, setSubmittedProperties] =
-    useState<SubmittedProperty[]>([]);
+  const [page, setPage] =
+    useState(1);
 
+  const [totalPages, setTotalPages] =
+    useState(1);
+
+  const [
+    totalProperties,
+    setTotalProperties,
+  ] = useState(0);
+
+  const [loading, setLoading] =
+    useState(true);
+
+  const limit = 10;
+
+  /*
+   * وقتی هر کدام از فیلترها تغییر کند،
+   * دوباره از صفحه اول API دریافت می‌کنیم.
+   */
   useEffect(() => {
-    setSubmittedProperties(
-      getSubmittedBuyProperties(),
-    );
-  }, []);
-
-  const submittedBuyProperties = useMemo<BuyProperty[]>(
-    () =>
-      submittedProperties.map((property) => ({
-        id: property.id,
-        image:
-          property.image || "/images/default.png",
-        images:
-          property.images.length > 0
-            ? property.images
-            : ["/images/default.png"],
-        title: property.title,
-        location: `${property.city}، ${property.district}`,
-        district: property.district,
-        price: property.salePrice / 1_000_000,
-        area: property.area,
-        bedrooms: property.bedrooms,
-        floor: property.floor,
-        totalFloors: property.totalFloors,
-        yearBuilt: property.yearBuilt,
-        type: property.propertyType,
-        amenities: property.amenities,
-        description: property.description,
-        lat: property.latitude,
-        lng: property.longitude,
-        createdAt: property.createdAt,
-      })),
-    [submittedProperties],
-  );
-
-  const allBuyProperties = useMemo<BuyProperty[]>(
-    () => [
-      ...submittedBuyProperties,
-      ...buyProperties,
-    ],
-    [submittedBuyProperties],
-  );
-
-  const filteredProperties = useMemo(() => {
-    let result = allBuyProperties.filter((property) => {
-      const normalizedSearch = search.trim();
-
-      const matchesSearch =
-        normalizedSearch.length === 0 ||
-        property.location.includes(normalizedSearch) ||
-        property.title.includes(normalizedSearch);
-
-      const matchesDistrict =
-        district === "همه مناطق" ||
-        property.district === district;
-
-      const matchesType =
-        propertyType === "همه انواع" ||
-        property.type === propertyType;
-
-      let matchesPrice = true;
-
-      if (price === "زیر ۵ میلیارد") {
-        matchesPrice = property.price < 5000;
-      }
-
-      if (price === "۵ تا ۱۰ میلیارد") {
-        matchesPrice =
-          property.price >= 5000 &&
-          property.price <= 10000;
-      }
-
-      if (price === "۱۰ تا ۱۵ میلیارد") {
-        matchesPrice =
-          property.price > 10000 &&
-          property.price <= 15000;
-      }
-
-      if (price === "بالای ۱۵ میلیارد") {
-        matchesPrice = property.price > 15000;
-      }
-
-      let matchesArea = true;
-
-      if (area === "زیر ۸۰ متر") {
-        matchesArea = property.area < 80;
-      }
-
-      if (area === "۸۰ تا ۱۲۰ متر") {
-        matchesArea =
-          property.area >= 80 &&
-          property.area <= 120;
-      }
-
-      if (area === "۱۲۰ تا ۱۵۰ متر") {
-        matchesArea =
-          property.area > 120 &&
-          property.area <= 150;
-      }
-
-      if (area === "بالای ۱۵۰ متر") {
-        matchesArea = property.area > 150;
-      }
-
-      let matchesBedroom = true;
-
-      if (bedroom === "بدون اتاق") {
-        matchesBedroom = property.bedrooms === 0;
-      }
-
-      if (bedroom === "۱ خواب") {
-        matchesBedroom = property.bedrooms === 1;
-      }
-
-      if (bedroom === "۲ خواب") {
-        matchesBedroom = property.bedrooms === 2;
-      }
-
-      if (bedroom === "۳ خواب") {
-        matchesBedroom = property.bedrooms === 3;
-      }
-
-      if (bedroom === "۴ خواب و بیشتر") {
-        matchesBedroom = property.bedrooms >= 4;
-      }
-
-      let matchesBuildYear = true;
-
-      if (buildYear === "۱۴۰۳ به بعد") {
-        matchesBuildYear = property.yearBuilt >= 1403;
-      }
-
-      if (buildYear === "۱۴۰۰ تا ۱۴۰۲") {
-        matchesBuildYear =
-          property.yearBuilt >= 1400 &&
-          property.yearBuilt <= 1402;
-      }
-
-      if (buildYear === "۱۳۹۵ تا ۱۳۹۹") {
-        matchesBuildYear =
-          property.yearBuilt >= 1395 &&
-          property.yearBuilt <= 1399;
-      }
-
-      if (buildYear === "قبل از ۱۳۹۵") {
-        matchesBuildYear = property.yearBuilt < 1395;
-      }
-
-      return (
-        matchesSearch &&
-        matchesDistrict &&
-        matchesType &&
-        matchesPrice &&
-        matchesArea &&
-        matchesBedroom &&
-        matchesBuildYear
-      );
-    });
-
-    if (sort === "ارزان‌ترین") {
-      result = [...result].sort(
-        (a, b) => a.price - b.price,
-      );
-    }
-
-    if (sort === "گران‌ترین") {
-      result = [...result].sort(
-        (a, b) => b.price - a.price,
-      );
-    }
-
-    if (sort === "متراژ بیشتر") {
-      result = [...result].sort(
-        (a, b) => b.area - a.area,
-      );
-    }
-
-    if (sort === "جدیدترین") {
-      result = [...result].sort(
-        (a, b) => b.createdAt - a.createdAt,
-      );
-    }
-
-    return result;
+    setPage(1);
   }, [
-    allBuyProperties,
+    search,
+    district,
+    propertyType,
+    price,
+    area,
+    bedroom,
+    buildYear,
+    sort,
+  ]);
+
+  /*
+   * دریافت آگهی‌ها از API
+   */
+  useEffect(() => {
+    let cancelled = false;
+
+    async function fetchProperties() {
+      setLoading(true);
+
+      try {
+        const params =
+          new URLSearchParams();
+
+        params.set(
+          "page",
+          String(page),
+        );
+
+        params.set(
+          "limit",
+          String(limit),
+        );
+
+        params.set(
+          "search",
+          search,
+        );
+
+        params.set(
+          "district",
+          district,
+        );
+
+        params.set(
+          "propertyType",
+          propertyType,
+        );
+
+        params.set(
+          "price",
+          price,
+        );
+
+        params.set(
+          "area",
+          area,
+        );
+
+        params.set(
+          "bedroom",
+          bedroom,
+        );
+
+        params.set(
+          "buildYear",
+          buildYear,
+        );
+
+        params.set(
+          "sort",
+          sort,
+        );
+
+        const response =
+          await fetch(
+            `/api/properties?${params.toString()}`,
+            {
+              cache: "no-store",
+            },
+          );
+
+        const data =
+          await response.json();
+
+        if (
+          !response.ok ||
+          !data.success
+        ) {
+          throw new Error(
+            data.message ||
+              "دریافت آگهی‌ها ناموفق بود.",
+          );
+        }
+
+        if (cancelled) {
+          return;
+        }
+
+        setProperties(
+          data.properties || [],
+        );
+
+        setTotalProperties(
+          data.pagination
+            ?.total ?? 0,
+        );
+
+        setTotalPages(
+          data.pagination
+            ?.totalPages || 1,
+        );
+      } catch (error) {
+        console.error(
+          "Buy properties fetch error:",
+          error,
+        );
+
+        if (!cancelled) {
+          setProperties([]);
+          setTotalProperties(0);
+          setTotalPages(1);
+        }
+      } finally {
+        if (!cancelled) {
+          setLoading(false);
+        }
+      }
+    }
+
+    fetchProperties();
+
+    return () => {
+      cancelled = true;
+    };
+  }, [
+    page,
     search,
     district,
     propertyType,
@@ -498,31 +541,66 @@ export default function Buy() {
 
   const clearFilters = () => {
     setSearch("");
-    setDistrict("همه مناطق");
-    setPropertyType("همه انواع");
-    setPrice("همه قیمت‌ها");
-    setArea("همه متراژها");
-    setBedroom("همه تعداد اتاق‌ها");
-    setBuildYear("همه سال‌ها");
+    setDistrict(
+      "همه مناطق",
+    );
+    setPropertyType(
+      "همه انواع",
+    );
+    setPrice(
+      "همه قیمت‌ها",
+    );
+    setArea(
+      "همه متراژها",
+    );
+    setBedroom(
+      "همه تعداد اتاق‌ها",
+    );
+    setBuildYear(
+      "همه سال‌ها",
+    );
+    setSort(
+      "جدیدترین",
+    );
+    setPage(1);
     setSelectedProperty(null);
   };
 
-  const toggleBookmark = (id: number) => {
-    setBookmarked((current) =>
-      current.includes(id)
-        ? current.filter((item) => item !== id)
-        : [...current, id],
+  const toggleBookmark = (
+    id: string | number,
+  ) => {
+    setBookmarked(
+      (current) =>
+        current.includes(id)
+          ? current.filter(
+              (item) =>
+                item !== id,
+            )
+          : [
+              ...current,
+              id,
+            ],
     );
   };
 
   const handlePropertySelect = (
     property: BuyProperty,
   ) => {
-    router.push(`/buy/${property.id}`);
+    setSelectedProperty(
+      property,
+    );
+
+    router.push(
+      `/buy/${property.id}`,
+    );
   };
 
   return (
     <div className="min-h-screen bg-white">
+      {/* =========================
+          Filters
+      ========================== */}
+
       <section
         className="
           mx-auto
@@ -552,6 +630,8 @@ export default function Buy() {
             lg:justify-between
           "
         >
+          {/* Search */}
+
           <div className="relative w-full lg:w-[500px]">
             <FiSearch
               className="
@@ -569,7 +649,9 @@ export default function Buy() {
               type="search"
               value={search}
               onChange={(event) =>
-                setSearch(event.target.value)
+                setSearch(
+                  event.target.value,
+                )
               }
               placeholder="شهر یا محله مورد نظر را اضافه کنید"
               className="
@@ -593,17 +675,25 @@ export default function Buy() {
             />
           </div>
 
+          {/* Main filters */}
+
           <div className="flex w-full flex-wrap items-center gap-2 lg:w-auto">
             <FilterDropdown
               value={district}
               options={districts}
-              onChange={setDistrict}
+              onChange={
+                setDistrict
+              }
             />
 
             <FilterDropdown
               value={propertyType}
-              options={propertyTypes}
-              onChange={setPropertyType}
+              options={
+                propertyTypes
+              }
+              onChange={
+                setPropertyType
+              }
             />
 
             <FilterDropdown
@@ -621,7 +711,10 @@ export default function Buy() {
             <button
               type="button"
               onClick={() =>
-                setShowMoreFilters((current) => !current)
+                setShowMoreFilters(
+                  (current) =>
+                    !current,
+                )
               }
               className="
                 flex
@@ -644,10 +737,13 @@ export default function Buy() {
               "
             >
               <FiSliders />
+
               فیلترهای بیشتر
             </button>
           </div>
         </div>
+
+        {/* More filters */}
 
         {showMoreFilters && (
           <div
@@ -675,7 +771,9 @@ export default function Buy() {
 
                 <button
                   type="button"
-                  onClick={clearFilters}
+                  onClick={
+                    clearFilters
+                  }
                   className="
                     flex
                     items-center
@@ -689,27 +787,40 @@ export default function Buy() {
                   "
                 >
                   <FiX />
+
                   حذف همه فیلترها
                 </button>
               </div>
 
-              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-3">
+              <div className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-2">
                 <FilterDropdown
                   value={bedroom}
-                  options={bedrooms}
-                  onChange={setBedroom}
+                  options={
+                    bedrooms
+                  }
+                  onChange={
+                    setBedroom
+                  }
                 />
 
                 <FilterDropdown
                   value={buildYear}
-                  options={buildYears}
-                  onChange={setBuildYear}
+                  options={
+                    buildYears
+                  }
+                  onChange={
+                    setBuildYear
+                  }
                 />
               </div>
             </div>
           </div>
         )}
       </section>
+
+      {/* =========================
+          Main content
+      ========================== */}
 
       <main
         className="
@@ -725,6 +836,10 @@ export default function Buy() {
           lg:px-0
         "
       >
+        {/* =========================
+            Properties
+        ========================== */}
+
         <section className="min-w-0">
           <div className="mb-5 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
             <div>
@@ -733,15 +848,22 @@ export default function Buy() {
               </h1>
 
               <p className="mt-1 text-sm text-gray-8">
-                {filteredProperties.length.toLocaleString("fa-IR")} مورد یافت شد
+                {totalProperties.toLocaleString(
+                  "fa-IR",
+                )}{" "}
+                مورد یافت شد
               </p>
             </div>
+
+            {/* Sort */}
 
             <div className="relative w-full sm:w-[175px]">
               <select
                 value={sort}
                 onChange={(event) =>
-                  setSort(event.target.value)
+                  setSort(
+                    event.target.value,
+                  )
                 }
                 className="
                   h-11
@@ -759,10 +881,25 @@ export default function Buy() {
                   focus:border-primary
                 "
               >
-                <option value="جدیدترین">جدیدترین</option>
-                <option value="ارزان‌ترین">ارزان‌ترین</option>
-                <option value="گران‌ترین">گران‌ترین</option>
-                <option value="متراژ بیشتر">متراژ بیشتر</option>
+                <option value="جدیدترین">
+                  جدیدترین
+                </option>
+
+                <option value="ارزان‌ترین">
+                  ارزان‌ترین
+                </option>
+
+                <option value="گران‌ترین">
+                  گران‌ترین
+                </option>
+
+                <option value="متراژ بیشتر">
+                  متراژ بیشتر
+                </option>
+
+                <option value="متراژ کمتر">
+                  متراژ کمتر
+                </option>
               </select>
 
               <FiChevronDown
@@ -780,19 +917,218 @@ export default function Buy() {
             </div>
           </div>
 
-          {filteredProperties.length > 0 ? (
+          {/* Loading */}
+
+          {loading ? (
             <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
-              {filteredProperties.map((property) => (
-                <PropertyCard
-                  key={property.id}
-                  property={property}
-                  bookmarked={bookmarked.includes(property.id)}
-                  onBookmark={toggleBookmark}
-                  onSelect={handlePropertySelect}
-                />
-              ))}
+              {Array.from({
+                length: 10,
+              }).map(
+                (_, index) => (
+                  <div
+                    key={index}
+                    className="
+                      h-[370px]
+                      animate-pulse
+                      rounded-lg
+                      bg-gray-3
+                    "
+                  />
+                ),
+              )}
             </div>
+          ) : properties.length >
+            0 ? (
+            <>
+              {/* Property cards */}
+
+              <div className="grid grid-cols-1 gap-4 sm:grid-cols-2">
+                {properties.map(
+                  (property) => (
+                    <PropertyCard
+                      key={
+                        property.id
+                      }
+                      property={
+                        property
+                      }
+                      bookmarked={bookmarked.includes(
+                        property.id,
+                      )}
+                      onBookmark={
+                        toggleBookmark
+                      }
+                      onSelect={
+                        handlePropertySelect
+                      }
+                    />
+                  ),
+                )}
+              </div>
+
+              {/* Pagination */}
+
+              {totalPages > 1 && (
+                <div className="mt-8 flex flex-col items-center gap-4">
+                  <div className="flex items-center gap-2">
+                    <button
+                      type="button"
+                      disabled={
+                        page === 1
+                      }
+                      onClick={() =>
+                        setPage(
+                          (current) =>
+                            Math.max(
+                              current -
+                                1,
+                              1,
+                            ),
+                        )
+                      }
+                      className="
+                        rounded-md
+                        border
+                        border-gray-5
+                        px-4
+                        py-2.5
+                        text-sm
+                        font-bold
+                        text-gray-11
+                        transition
+                        hover:border-primary
+                        hover:text-primary
+                        disabled:cursor-not-allowed
+                        disabled:opacity-40
+                      "
+                    >
+                      قبلی
+                    </button>
+
+                    {Array.from(
+                      {
+                        length:
+                          totalPages,
+                      },
+                      (_, index) =>
+                        index + 1,
+                    )
+                      .filter(
+                        (
+                          pageNumber,
+                        ) => {
+                          if (
+                            totalPages <=
+                            5
+                          ) {
+                            return true;
+                          }
+
+                          return (
+                            pageNumber ===
+                              1 ||
+                            pageNumber ===
+                              totalPages ||
+                            Math.abs(
+                              pageNumber -
+                                page,
+                            ) <= 1
+                          );
+                        },
+                      )
+                      .map(
+                        (
+                          pageNumber,
+                        ) => (
+                          <button
+                            key={
+                              pageNumber
+                            }
+                            type="button"
+                            onClick={() =>
+                              setPage(
+                                pageNumber,
+                              )
+                            }
+                            className={`
+                              flex
+                              h-10
+                              min-w-10
+                              items-center
+                              justify-center
+                              rounded-md
+                              border
+                              px-3
+                              text-sm
+                              font-bold
+                              transition
+                              ${
+                                page ===
+                                pageNumber
+                                  ? "border-primary bg-primary text-white"
+                                  : "border-gray-5 bg-white text-gray-11 hover:border-primary hover:text-primary"
+                              }
+                            `}
+                          >
+                            {pageNumber.toLocaleString(
+                              "fa-IR",
+                            )}
+                          </button>
+                        ),
+                      )}
+
+                    <button
+                      type="button"
+                      disabled={
+                        page ===
+                        totalPages
+                      }
+                      onClick={() =>
+                        setPage(
+                          (current) =>
+                            Math.min(
+                              current +
+                                1,
+                              totalPages,
+                            ),
+                        )
+                      }
+                      className="
+                        rounded-md
+                        border
+                        border-gray-5
+                        px-4
+                        py-2.5
+                        text-sm
+                        font-bold
+                        text-gray-11
+                        transition
+                        hover:border-primary
+                        hover:text-primary
+                        disabled:cursor-not-allowed
+                        disabled:opacity-40
+                      "
+                    >
+                      بعدی
+                    </button>
+                  </div>
+
+                  <p className="text-xs text-gray-8">
+                    صفحه{" "}
+                    {page.toLocaleString(
+                      "fa-IR",
+                    )}{" "}
+                    از{" "}
+                    {totalPages.toLocaleString(
+                      "fa-IR",
+                    )}
+                  </p>
+                </div>
+              )}
+            </>
           ) : (
+            /* Empty state */
+
             <div
               className="
                 flex
@@ -820,7 +1156,9 @@ export default function Buy() {
 
               <button
                 type="button"
-                onClick={clearFilters}
+                onClick={
+                  clearFilters
+                }
                 className="
                   mt-5
                   rounded-md
@@ -839,6 +1177,10 @@ export default function Buy() {
             </div>
           )}
         </section>
+
+        {/* =========================
+            Map
+        ========================== */}
 
         <section className="order-first lg:order-none">
           <div
@@ -879,11 +1221,19 @@ export default function Buy() {
 
             <div className="h-[350px] sm:h-[450px] lg:h-[751px]">
               <BuyMap
-                properties={filteredProperties}
-                selectedProperty={selectedProperty}
-                onSelectProperty={setSelectedProperty}
+                properties={
+                  properties
+                }
+                selectedProperty={
+                  selectedProperty
+                }
+                onSelectProperty={
+                  handlePropertySelect
+                }
               />
             </div>
+
+            {/* Selected property */}
 
             {selectedProperty && (
               <div className="border-t border-gray-5 bg-white p-4">
@@ -894,7 +1244,9 @@ export default function Buy() {
                         selectedProperty.image ||
                         "/images/default.png"
                       }
-                      alt={selectedProperty.title}
+                      alt={
+                        selectedProperty.title
+                      }
                       fill
                       sizes="80px"
                       className="object-cover"
@@ -903,16 +1255,43 @@ export default function Buy() {
 
                   <div className="min-w-0">
                     <h3 className="truncate font-bold text-gray-12">
-                      {selectedProperty.title}
+                      {
+                        selectedProperty.title
+                      }
                     </h3>
 
                     <p className="mt-1 text-xs text-gray-8">
-                      {selectedProperty.area.toLocaleString("fa-IR")} متر،{" "}
-                      {selectedProperty.location}
+                      {selectedProperty.area.toLocaleString(
+                        "fa-IR",
+                      )}{" "}
+                      متر،{" "}
+                      {
+                        selectedProperty.location
+                      }
                     </p>
 
                     <p className="mt-1 text-xs font-bold text-primary">
-                      {selectedProperty.price.toLocaleString("fa-IR")} میلیون تومان
+                      {
+                        formatPrice(
+                          selectedProperty.price,
+                        )
+                      }
+                    </p>
+
+                    <p className="mt-1 text-xs font-bold text-gray-11">
+                      متری{" "}
+                      {(
+                        selectedProperty.area >
+                        0
+                          ? Math.round(
+                              selectedProperty.price /
+                                selectedProperty.area,
+                            )
+                          : 0
+                      ).toLocaleString(
+                        "fa-IR",
+                      )}{" "}
+                      میلیون تومان
                     </p>
                   </div>
                 </div>

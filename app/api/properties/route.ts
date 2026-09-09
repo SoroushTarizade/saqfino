@@ -25,6 +25,7 @@ function escapeRegex(value: string) {
  *
  * Public endpoint for:
  * - listing properties
+ * - buy / rent
  * - filtering
  * - searching
  * - sorting
@@ -40,7 +41,39 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 1. Pagination
+     * 1. Transaction type
+     * ----------------------------------------
+     *
+     * buy:
+     * /api/properties?transactionType=buy
+     *
+     * rent:
+     * /api/properties?transactionType=rent
+     *
+     * Default = buy
+     */
+
+    const transactionType =
+      searchParams.get("transactionType")?.trim() || "buy";
+
+    if (
+      transactionType !== "buy" &&
+      transactionType !== "rent"
+    ) {
+      return NextResponse.json(
+        {
+          success: false,
+          message: "نوع معامله معتبر نیست.",
+        },
+        {
+          status: 400,
+        },
+      );
+    }
+
+    /*
+     * ----------------------------------------
+     * 2. Pagination
      * ----------------------------------------
      */
 
@@ -73,7 +106,7 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 2. Read filters
+     * 3. Read filters
      * ----------------------------------------
      */
 
@@ -108,24 +141,18 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 3. Base database filter
-     *
-     * Only active BUY properties should
-     * appear on /buy.
+     * 4. Base database filter
      * ----------------------------------------
      */
 
-    const filter: Record<
-      string,
-      unknown
-    > = {
-      transactionType: "buy",
+    const filter: Record<string, unknown> = {
+      transactionType,
       status: "active",
     };
 
     /*
      * ----------------------------------------
-     * 4. Search
+     * 5. Search
      *
      * Search in:
      * - title
@@ -162,7 +189,7 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 5. District filter
+     * 6. District filter
      * ----------------------------------------
      */
 
@@ -175,7 +202,7 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 6. Property type filter
+     * 7. Property type filter
      *
      * Frontend Persian -> Database English
      * ----------------------------------------
@@ -208,10 +235,17 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 7. Price filter
+     * 8. Price filter
      *
-     * Database:
+     * BUY:
      * salePrice = تومان
+     *
+     * RENT:
+     * deposit = تومان
+     *
+     * The same price dropdown is used by
+     * the frontend, but its meaning depends
+     * on transactionType.
      * ----------------------------------------
      */
 
@@ -219,38 +253,86 @@ export async function GET(request: Request) {
       price &&
       price !== "همه قیمت‌ها"
     ) {
-      switch (price) {
-        case "زیر ۵ میلیارد":
-          filter.salePrice = {
-            $lt: 5_000_000_000,
-          };
-          break;
+      /*
+       * ------------------------------------
+       * BUY PRICE
+       * ------------------------------------
+       */
 
-        case "۵ تا ۱۰ میلیارد":
-          filter.salePrice = {
-            $gte: 5_000_000_000,
-            $lte: 10_000_000_000,
-          };
-          break;
+      if (
+        transactionType === "buy"
+      ) {
+        switch (price) {
+          case "زیر ۵ میلیارد":
+            filter.salePrice = {
+              $lt: 5_000_000_000,
+            };
+            break;
 
-        case "۱۰ تا ۱۵ میلیارد":
-          filter.salePrice = {
-            $gt: 10_000_000_000,
-            $lte: 15_000_000_000,
-          };
-          break;
+          case "۵ تا ۱۰ میلیارد":
+            filter.salePrice = {
+              $gte: 5_000_000_000,
+              $lte: 10_000_000_000,
+            };
+            break;
 
-        case "بالای ۱۵ میلیارد":
-          filter.salePrice = {
-            $gt: 15_000_000_000,
-          };
-          break;
+          case "۱۰ تا ۱۵ میلیارد":
+            filter.salePrice = {
+              $gt: 10_000_000_000,
+              $lte: 15_000_000_000,
+            };
+            break;
+
+          case "بالای ۱۵ میلیارد":
+            filter.salePrice = {
+              $gt: 15_000_000_000,
+            };
+            break;
+        }
+      }
+
+      /*
+       * ------------------------------------
+       * RENT DEPOSIT
+       * ------------------------------------
+       */
+
+      if (
+        transactionType === "rent"
+      ) {
+        switch (price) {
+          case "زیر ۵۰۰ میلیون":
+            filter.deposit = {
+              $lt: 500_000_000,
+            };
+            break;
+
+          case "۵۰۰ میلیون تا ۱ میلیارد":
+            filter.deposit = {
+              $gte: 500_000_000,
+              $lte: 1_000_000_000,
+            };
+            break;
+
+          case "۱ تا ۲ میلیارد":
+            filter.deposit = {
+              $gt: 1_000_000_000,
+              $lte: 2_000_000_000,
+            };
+            break;
+
+          case "بالای ۲ میلیارد":
+            filter.deposit = {
+              $gt: 2_000_000_000,
+            };
+            break;
+        }
       }
     }
 
     /*
      * ----------------------------------------
-     * 8. Area filter
+     * 9. Area filter
      * ----------------------------------------
      */
 
@@ -289,7 +371,7 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 9. Bedroom filter
+     * 10. Bedroom filter
      * ----------------------------------------
      */
 
@@ -324,7 +406,7 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 10. Build year filter
+     * 11. Build year filter
      * ----------------------------------------
      */
 
@@ -363,11 +445,7 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 11. Sorting
-     *
-     * _id is used as a stable tie-breaker
-     * so pagination does not randomly shift
-     * when two properties have the same value.
+     * 12. Sorting
      * ----------------------------------------
      */
 
@@ -381,19 +459,40 @@ export async function GET(request: Request) {
 
     switch (sort) {
       case "ارزان‌ترین":
-        sortQuery = {
-          salePrice: 1,
-          createdAt: -1,
-          _id: -1,
-        };
+        /*
+         * For BUY:
+         * salePrice
+         *
+         * For RENT:
+         * deposit
+         */
+        sortQuery =
+          transactionType === "buy"
+            ? {
+                salePrice: 1,
+                createdAt: -1,
+                _id: -1,
+              }
+            : {
+                deposit: 1,
+                createdAt: -1,
+                _id: -1,
+              };
         break;
 
       case "گران‌ترین":
-        sortQuery = {
-          salePrice: -1,
-          createdAt: -1,
-          _id: -1,
-        };
+        sortQuery =
+          transactionType === "buy"
+            ? {
+                salePrice: -1,
+                createdAt: -1,
+                _id: -1,
+              }
+            : {
+                deposit: -1,
+                createdAt: -1,
+                _id: -1,
+              };
         break;
 
       case "متراژ بیشتر":
@@ -425,15 +524,9 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 12. Query MongoDB
+     * 13. Query MongoDB
      *
-     * IMPORTANT:
      * Filtering happens BEFORE pagination.
-     *
-     * This means:
-     * - filters are applied to all properties
-     * - total is correct
-     * - pagination is correct
      * ----------------------------------------
      */
 
@@ -452,7 +545,7 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 13. Pagination info
+     * 14. Pagination info
      * ----------------------------------------
      */
 
@@ -461,8 +554,7 @@ export async function GET(request: Request) {
 
     /*
      * ----------------------------------------
-     * 14. Format MongoDB data
-     * for frontend
+     * 15. Format MongoDB data
      * ----------------------------------------
      */
 
@@ -492,6 +584,8 @@ export async function GET(request: Request) {
           property.district,
 
         /*
+         * BUY
+         *
          * Database:
          * تومان
          *
@@ -500,10 +594,32 @@ export async function GET(request: Request) {
          */
 
         price:
-          Math.round(
-            (property.salePrice || 0) /
-              1_000_000,
-          ),
+          transactionType === "buy"
+            ? Math.round(
+                (property.salePrice || 0) /
+                  1_000_000,
+              )
+            : 0,
+
+        /*
+         * RENT
+         *
+         * Keep raw values available
+         * in the API response.
+         *
+         * Frontend can format them
+         * according to its display unit.
+         */
+
+        deposit:
+          transactionType === "rent"
+            ? property.deposit || 0
+            : 0,
+
+        rent:
+          transactionType === "rent"
+            ? property.rent || 0
+            : 0,
 
         area:
           property.area,
@@ -539,11 +655,14 @@ export async function GET(request: Request) {
           new Date(
             property.createdAt,
           ).getTime(),
+
+        transactionType:
+          property.transactionType,
       }));
 
     /*
      * ----------------------------------------
-     * 15. Return response
+     * 16. Return response
      * ----------------------------------------
      */
 
@@ -625,6 +744,10 @@ type PropertyType =
  * POST /api/properties
  *
  * Creates a new property advertisement.
+ *
+ * Supports:
+ * - BUY
+ * - RENT
  * ----------------------------------------
  */
 
@@ -1300,6 +1423,27 @@ export async function POST(
           },
         );
       }
+
+      /*
+       * At least one of deposit/rent
+       * must be greater than zero.
+       */
+
+      if (
+        numericDeposit === 0 &&
+        numericRent === 0
+      ) {
+        return NextResponse.json(
+          {
+            success: false,
+            message:
+              "حداقل مبلغ ودیعه یا اجاره باید بیشتر از صفر باشد.",
+          },
+          {
+            status: 400,
+          },
+        );
+      }
     }
 
     /*
@@ -1324,9 +1468,6 @@ export async function POST(
     /*
      * ----------------------------------------
      * 24. Validate images
-     *
-     * Images are uploaded to Cloudinary
-     * before this API request.
      * ----------------------------------------
      */
 
@@ -1473,10 +1614,6 @@ export async function POST(
     /*
      * ----------------------------------------
      * 26. Create property
-     *
-     * IMPORTANT:
-     * userId comes ONLY from the
-     * authenticated session.
      * ----------------------------------------
      */
 
@@ -1591,6 +1728,9 @@ export async function POST(
 
           title:
             property.title,
+
+          transactionType:
+            property.transactionType,
 
           images:
             property.images,

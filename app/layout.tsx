@@ -4,6 +4,11 @@ import "./globals.css";
 export const metadata: Metadata = {
   title: "سقفینو | خرید، فروش و اجاره ملک",
   description: "سقفینو؛ پلتفرم جستجو، خرید، فروش و اجاره ملک",
+  icons: {
+    icon: "/images/logo.png",
+    shortcut: "/images/logo.png",
+    apple: "/images/logo.png",
+  },
 };
 
 export default function RootLayout({

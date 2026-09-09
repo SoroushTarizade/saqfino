@@ -17,9 +17,11 @@ import {
   FiHome,
   FiImage,
   FiKey,
+  FiLogIn,
   FiMapPin,
   FiTrash2,
   FiUploadCloud,
+  FiUserPlus,
 } from "react-icons/fi";
 
 const SubmitMap = dynamic(() => import("./SubmitMap"), {
@@ -271,6 +273,49 @@ function getPropertyLabel(propertyType: PropertyType) {
 export default function Submit() {
   const router = useRouter();
 
+  /*
+   * Authentication
+   */
+  const [isAuthenticated, setIsAuthenticated] =
+    useState(false);
+
+  const [isAuthLoading, setIsAuthLoading] =
+    useState(true);
+
+  /*
+   * بررسی وضعیت ورود کاربر
+   */
+  useEffect(() => {
+    const checkAuthentication = async () => {
+      try {
+        const response = await fetch(
+          "/api/auth/me",
+          {
+            method: "GET",
+            cache: "no-store",
+          }
+        );
+
+        if (!response.ok) {
+          setIsAuthenticated(false);
+          return;
+        }
+
+        const data = await response.json();
+
+        setIsAuthenticated(
+          Boolean(data.user)
+        );
+      } catch {
+        setIsAuthenticated(false);
+      } finally {
+        setIsAuthLoading(false);
+      }
+    };
+
+    checkAuthentication();
+  }, []);
+
   const [currentStep, setCurrentStep] = useState(0);
 
   const [formData, setFormData] =
@@ -334,9 +379,18 @@ export default function Submit() {
   };
 
   const handleNumberChange =
-    (key: keyof FormData) =>
+    (
+      key:
+        | "area"
+        | "bedrooms"
+        | "floor"
+        | "totalFloors"
+        | "yearBuilt"
+    ) =>
     (event: ChangeEvent<HTMLInputElement>) => {
-      const value = cleanNumber(event.target.value);
+      const value = cleanNumber(
+        event.target.value
+      );
 
       updateFormData(key, value);
     };
@@ -480,7 +534,9 @@ export default function Submit() {
   const handleImageUpload = (
     event: ChangeEvent<HTMLInputElement>
   ) => {
-    const files = Array.from(event.target.files ?? []);
+    const files = Array.from(
+      event.target.files ?? []
+    );
 
     if (!files.length) {
       return;
@@ -518,9 +574,15 @@ export default function Submit() {
     }
 
     setImages((previous) => {
-      const updated = [...previous, ...newImages];
+      const updated = [
+        ...previous,
+        ...newImages,
+      ];
 
-      if (!mainImageId && updated.length > 0) {
+      if (
+        !mainImageId &&
+        updated.length > 0
+      ) {
         setMainImageId(updated[0].id);
       }
 
@@ -567,7 +629,10 @@ export default function Submit() {
           ? previous.amenities.filter(
               (item) => item !== amenity
             )
-          : [...previous.amenities, amenity],
+          : [
+              ...previous.amenities,
+              amenity,
+            ],
       };
     });
   };
@@ -589,10 +654,12 @@ export default function Submit() {
 
       const orderedImages = [
         ...images.filter(
-          (image) => image.id === mainImageId
+          (image) =>
+            image.id === mainImageId
         ),
         ...images.filter(
-          (image) => image.id !== mainImageId
+          (image) =>
+            image.id !== mainImageId
         ),
       ];
 
@@ -603,19 +670,26 @@ export default function Submit() {
       for (const image of orderedImages) {
         const uploadData = new FormData();
 
-        uploadData.append("file", image.file);
+        uploadData.append(
+          "file",
+          image.file
+        );
 
-        const response = await fetch("/api/upload", {
-          method: "POST",
-          body: uploadData,
-        });
+        const response = await fetch(
+          "/api/upload",
+          {
+            method: "POST",
+            body: uploadData,
+          }
+        );
 
         /*
          * پاسخ را ابتدا به صورت text می‌خوانیم
          * تا در صورت خالی بودن response با
          * Unexpected end of JSON input مواجه نشویم.
          */
-        const responseText = await response.text();
+        const responseText =
+          await response.text();
 
         let result: {
           success?: boolean;
@@ -628,7 +702,9 @@ export default function Submit() {
 
         if (responseText) {
           try {
-            result = JSON.parse(responseText);
+            result = JSON.parse(
+              responseText
+            );
           } catch {
             throw new Error(
               "پاسخ نامعتبر از سرور هنگام آپلود تصویر دریافت شد."
@@ -636,7 +712,10 @@ export default function Submit() {
           }
         }
 
-        if (!response.ok || !result.success) {
+        if (
+          !response.ok ||
+          !result.success
+        ) {
           throw new Error(
             result.message ||
               `آپلود تصویر با خطا مواجه شد. (${response.status})`
@@ -644,7 +723,9 @@ export default function Submit() {
         }
 
         if (result.image?.url) {
-          uploadedImages.push(result.image.url);
+          uploadedImages.push(
+            result.image.url
+          );
         } else {
           throw new Error(
             "آپلود تصویر انجام شد اما آدرس تصویر از سرور دریافت نشد."
@@ -655,89 +736,115 @@ export default function Submit() {
       /*
        * ثبت اطلاعات ملک
        */
-      const propertyResponse = await fetch(
-        "/api/properties",
-        {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({
-            transactionType:
-              formData.transactionType === "فروش"
-                ? "buy"
-                : "rent",
+      const propertyResponse =
+        await fetch(
+          "/api/properties",
+          {
+            method: "POST",
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+            body: JSON.stringify({
+              transactionType:
+                formData.transactionType ===
+                "فروش"
+                  ? "buy"
+                  : "rent",
 
-            propertyType:
-              formData.propertyType === "آپارتمان"
-                ? "apartment"
-                : formData.propertyType === "خانه"
-                ? "house"
-                : formData.propertyType === "ویلا"
-                ? "villa"
-                : formData.propertyType === "زمین"
-                ? "land"
-                : "commercial",
+              propertyType:
+                formData.propertyType ===
+                "آپارتمان"
+                  ? "apartment"
+                  : formData.propertyType ===
+                    "خانه"
+                  ? "house"
+                  : formData.propertyType ===
+                    "ویلا"
+                  ? "villa"
+                  : formData.propertyType ===
+                    "زمین"
+                  ? "land"
+                  : "commercial",
 
-            area: Number(formData.area),
+              area: Number(
+                formData.area
+              ),
 
-            bedrooms: Number(
-              formData.bedrooms
-            ),
+              bedrooms: Number(
+                formData.bedrooms
+              ),
 
-            floor: formData.floor
-              ? Number(formData.floor)
-              : undefined,
-
-            totalFloors: formData.totalFloors
-              ? Number(formData.totalFloors)
-              : undefined,
-
-            yearBuilt: formData.yearBuilt
-              ? Number(formData.yearBuilt)
-              : undefined,
-
-            salePrice:
-              formData.transactionType ===
-                "فروش" &&
-              formData.salePrice
-                ? Number(formData.salePrice)
+              floor: formData.floor
+                ? Number(formData.floor)
                 : undefined,
 
-            deposit:
-              formData.transactionType ===
-                "اجاره" &&
-              formData.deposit
-                ? Number(formData.deposit)
-                : undefined,
+              totalFloors:
+                formData.totalFloors
+                  ? Number(
+                      formData.totalFloors
+                    )
+                  : undefined,
 
-            rent:
-              formData.transactionType ===
-                "اجاره" &&
-              formData.rent
-                ? Number(formData.rent)
-                : undefined,
+              yearBuilt:
+                formData.yearBuilt
+                  ? Number(
+                      formData.yearBuilt
+                    )
+                  : undefined,
 
-            amenities: formData.amenities,
+              salePrice:
+                formData.transactionType ===
+                  "فروش" &&
+                formData.salePrice
+                  ? Number(
+                      formData.salePrice
+                    )
+                  : undefined,
 
-            title: formData.title.trim(),
+              deposit:
+                formData.transactionType ===
+                  "اجاره" &&
+                formData.deposit
+                  ? Number(
+                      formData.deposit
+                    )
+                  : undefined,
 
-            description:
-              formData.description.trim(),
+              rent:
+                formData.transactionType ===
+                  "اجاره" &&
+                formData.rent
+                  ? Number(
+                      formData.rent
+                    )
+                  : undefined,
 
-            city: formData.city.trim(),
+              amenities:
+                formData.amenities,
 
-            district:
-              formData.district.trim(),
+              title:
+                formData.title.trim(),
 
-            latitude: formData.latitude,
+              description:
+                formData.description.trim(),
 
-            longitude: formData.longitude,
+              city:
+                formData.city.trim(),
 
-            images: uploadedImages,
-          }),
-        }
-      );
+              district:
+                formData.district.trim(),
+
+              latitude:
+                formData.latitude,
+
+              longitude:
+                formData.longitude,
+
+              images: uploadedImages,
+            }),
+          }
+        );
 
       /*
        * پاسخ API ثبت ملک را هم به صورت امن می‌خوانیم.
@@ -759,9 +866,10 @@ export default function Submit() {
 
       if (propertyResponseText) {
         try {
-          propertyResult = JSON.parse(
-            propertyResponseText
-          );
+          propertyResult =
+            JSON.parse(
+              propertyResponseText
+            );
         } catch {
           throw new Error(
             "پاسخ نامعتبر از سرور هنگام ثبت آگهی دریافت شد."
@@ -804,9 +912,7 @@ export default function Submit() {
   };
 
   /*
-   * این قسمت مهم است:
-   * خلاصه آگهی در تمام مراحل از formData خوانده می‌شود،
-   * بنابراین با هر تغییر input بلافاصله آپدیت می‌شود.
+   * خلاصه آگهی
    */
   const liveSummary = (
     <div className="rounded-2xl border border-gray-3 bg-white">
@@ -992,7 +1098,10 @@ export default function Submit() {
               </p>
 
               <span className="text-xs font-bold text-gray-10">
-                {toPersianDigits(images.length)} تصویر
+                {toPersianDigits(
+                  images.length
+                )}{" "}
+                تصویر
               </span>
             </div>
           </div>
@@ -1000,6 +1109,98 @@ export default function Submit() {
       </div>
     </div>
   );
+
+  /*
+   * -------------------------------------------------------
+   * Loading authentication
+   * -------------------------------------------------------
+   */
+  if (isAuthLoading) {
+    return (
+      <div
+        dir="rtl"
+        className="flex min-h-screen items-center justify-center bg-gray-1 px-4"
+      >
+        <div className="flex flex-col items-center text-center">
+          <span className="h-8 w-8 animate-spin rounded-full border-2 border-[#CB1B1B] border-t-transparent" />
+
+          <p className="mt-4 text-sm text-gray-7">
+            در حال بررسی حساب کاربری...
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /*
+   * -------------------------------------------------------
+   * User is not authenticated
+   * -------------------------------------------------------
+   */
+  if (!isAuthenticated) {
+    return (
+      <div
+        dir="rtl"
+        className="flex min-h-screen items-center justify-center bg-gray-1 px-4 py-10"
+      >
+        <div className="w-full max-w-[500px] rounded-2xl border border-gray-3 bg-white p-6 text-center shadow-sm sm:p-8">
+          <div className="mx-auto flex h-16 w-16 items-center justify-center rounded-2xl bg-[#CB1B1B]/10 text-[#CB1B1B]">
+            <FiKey size={28} />
+          </div>
+
+          <h1 className="mt-5 text-xl font-bold text-gray-13 sm:text-2xl">
+            برای ثبت آگهی وارد حساب کاربری شوید
+          </h1>
+
+          <p className="mx-auto mt-3 max-w-md text-sm leading-7 text-gray-7">
+            برای ثبت آگهی در سقفینو ابتدا باید
+            وارد حساب کاربری خود شوید. اگر هنوز
+            حسابی ندارید، می‌توانید به‌راحتی
+            ثبت‌نام کنید.
+          </p>
+
+          <div className="mt-7 flex flex-col gap-3 sm:flex-row">
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  "/login?redirect=/submit"
+                )
+              }
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl bg-[#CB1B1B] px-5 py-3 text-sm font-bold text-white transition hover:bg-[#b81717]"
+            >
+              <FiLogIn size={17} />
+              ورود به حساب کاربری
+            </button>
+
+            <button
+              type="button"
+              onClick={() =>
+                router.push(
+                  "/register?redirect=/submit"
+                )
+              }
+              className="flex flex-1 items-center justify-center gap-2 rounded-xl border border-gray-3 bg-white px-5 py-3 text-sm font-bold text-gray-11 transition hover:border-gray-5 hover:bg-gray-1"
+            >
+              <FiUserPlus size={17} />
+              ثبت‌نام
+            </button>
+          </div>
+
+          <p className="mt-5 text-xs leading-5 text-gray-6">
+            برای ثبت و مدیریت آگهی‌های خود داشتن
+            حساب کاربری ضروری است.
+          </p>
+        </div>
+      </div>
+    );
+  }
+
+  /*
+   * -------------------------------------------------------
+   * Authenticated user - Submit form
+   * -------------------------------------------------------
+   */
 
   return (
     <div
@@ -1540,7 +1741,9 @@ export default function Submit() {
                     className="w-full rounded-xl border border-gray-3 bg-white px-4 py-3 text-sm text-gray-13 outline-none transition placeholder:text-gray-6 focus:border-[#CB1B1B]"
                   />
 
-                  {renderError(errors.title)}
+                  {renderError(
+                    errors.title
+                  )}
                 </div>
 
                 <div className="mt-5">
@@ -1549,7 +1752,9 @@ export default function Submit() {
                   </label>
 
                   <textarea
-                    value={formData.description}
+                    value={
+                      formData.description
+                    }
                     onChange={(event) =>
                       updateFormData(
                         "description",
@@ -1591,7 +1796,8 @@ export default function Submit() {
                   <div className="mt-5 grid grid-cols-2 gap-2.5 sm:grid-cols-3 md:grid-cols-4">
                     {images.map((image) => {
                       const isMain =
-                        image.id === mainImageId;
+                        image.id ===
+                        mainImageId;
 
                       return (
                         <div
@@ -1720,7 +1926,9 @@ export default function Submit() {
 
                   <InputField
                     label="منطقه / محله"
-                    value={formData.district}
+                    value={
+                      formData.district
+                    }
                     onChange={(event) =>
                       updateFormData(
                         "district",
