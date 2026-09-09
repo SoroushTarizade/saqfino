@@ -12,8 +12,29 @@ import {
   useMap,
 } from "react-leaflet";
 
-import type { Property } from "@/data/properties";
 import { formatPrice } from "@/lib/formatPrice";
+
+type Property = {
+  id: string;
+  image: string;
+  images: string[];
+  title: string;
+  location: string;
+  district: string;
+  deposit: number;
+  rent: number;
+  area: number;
+  bedrooms: number;
+  floor: number;
+  totalFloors: number;
+  yearBuilt: number;
+  type: string;
+  amenities: string[];
+  description: string;
+  lat: number;
+  lng: number;
+  createdAt?: string;
+};
 
 type RentMapProps = {
   properties: Property[];
@@ -118,7 +139,9 @@ function RentMap({
                 <div className="mt-2 space-y-1 text-xs">
                   <p>
                     ودیعه:{" "}
-                    {formatPrice(property.deposit / 100_000_000)}
+                    {formatPrice(
+                      property.deposit / 100_000_000,
+                    )}
                   </p>
 
                   <p>

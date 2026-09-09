@@ -118,16 +118,20 @@ type Property = {
 
   description: string;
 
-  lat?: number;
+  lat: number;
 
-  lng?: number;
+  lng: number;
 
   createdAt?: string;
+
+  transactionType?: "buy" | "rent";
 };
 
 type FilterDropdownProps = {
   value: string;
+
   options: string[];
+
   onChange: (
     value: string,
   ) => void;
@@ -648,30 +652,39 @@ export default function Rent() {
   const clearFilters =
     () => {
       setSearch("");
+
       setDistrict(
         "همه مناطق",
       );
+
       setPropertyType(
         "همه انواع",
       );
+
       setDeposit(
         "همه ودیعه‌ها",
       );
+
       setRent(
         "همه اجاره‌ها",
       );
+
       setArea(
         "همه متراژها",
       );
+
       setBedroom(
         "همه تعداد اتاق‌ها",
       );
+
       setBuildYear(
         "همه سال‌ها",
       );
+
       setSort(
         "جدیدترین",
       );
+
       setSelectedProperty(
         null,
       );
@@ -1057,9 +1070,8 @@ export default function Rent() {
 
               <button
                 type="button"
-                onClick={
-                  () =>
-                    window.location.reload()
+                onClick={() =>
+                  window.location.reload()
                 }
                 className="
                   mt-5

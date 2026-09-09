@@ -8,6 +8,8 @@ if (!MONGODB_URI) {
   );
 }
 
+const mongoUri: string = MONGODB_URI;
+
 const cached = globalThis as typeof globalThis & {
   mongoose?: {
     conn: typeof mongoose | null;
@@ -29,10 +31,19 @@ export default async function connectDB() {
   }
 
   if (!mongooseCache.promise) {
-    mongooseCache.promise = mongoose.connect(MONGODB_URI);
+    mongooseCache.promise =
+      mongoose.connect(mongoUri);
   }
 
-  mongooseCache.conn = await mongooseCache.promise;
+  try {
+    mongooseCache.conn =
+      await mongooseCache.promise;
+  } catch (error) {
+    mongooseCache.promise = null;
+    mongooseCache.conn = null;
+
+    throw error;
+  }
 
   return mongooseCache.conn;
 }
