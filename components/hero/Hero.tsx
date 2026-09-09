@@ -10,7 +10,7 @@ export default function Hero() {
       <div className="relative h-[690px] w-full">
         {/* Background Image */}
         <Image
-          src="/images/photo.png"
+          src="/images/Photo.png"
           alt="سقفینو؛ سقفی برای همه"
           fill
           priority
