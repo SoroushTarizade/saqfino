@@ -605,30 +605,56 @@ export default function Submit() {
 
         uploadData.append("file", image.file);
 
-        const response = await fetch(
-          "/api/upload",
-          {
-            method: "POST",
-            body: uploadData,
-          }
-        );
+        const response = await fetch("/api/upload", {
+          method: "POST",
+          body: uploadData,
+        });
 
-        const result = await response.json();
+        /*
+         * پاسخ را ابتدا به صورت text می‌خوانیم
+         * تا در صورت خالی بودن response با
+         * Unexpected end of JSON input مواجه نشویم.
+         */
+        const responseText = await response.text();
+
+        let result: {
+          success?: boolean;
+          message?: string;
+          image?: {
+            url?: string;
+            publicId?: string;
+          };
+        } = {};
+
+        if (responseText) {
+          try {
+            result = JSON.parse(responseText);
+          } catch {
+            throw new Error(
+              "پاسخ نامعتبر از سرور هنگام آپلود تصویر دریافت شد."
+            );
+          }
+        }
 
         if (!response.ok || !result.success) {
           throw new Error(
             result.message ||
-              "آپلود تصویر با خطا مواجه شد."
+              `آپلود تصویر با خطا مواجه شد. (${response.status})`
           );
         }
 
         if (result.image?.url) {
-          uploadedImages.push(
-            result.image.url
+          uploadedImages.push(result.image.url);
+        } else {
+          throw new Error(
+            "آپلود تصویر انجام شد اما آدرس تصویر از سرور دریافت نشد."
           );
         }
       }
 
+      /*
+       * ثبت اطلاعات ملک
+       */
       const propertyResponse = await fetch(
         "/api/properties",
         {
@@ -713,13 +739,43 @@ export default function Submit() {
         }
       );
 
-      const propertyResult =
-        await propertyResponse.json();
+      /*
+       * پاسخ API ثبت ملک را هم به صورت امن می‌خوانیم.
+       */
+      const propertyResponseText =
+        await propertyResponse.text();
 
-      if (!propertyResponse.ok) {
+      let propertyResult: {
+        success?: boolean;
+        message?: string;
+        property?: {
+          id?: string;
+          status?: string;
+          title?: string;
+          transactionType?: string;
+          images?: string[];
+        };
+      } = {};
+
+      if (propertyResponseText) {
+        try {
+          propertyResult = JSON.parse(
+            propertyResponseText
+          );
+        } catch {
+          throw new Error(
+            "پاسخ نامعتبر از سرور هنگام ثبت آگهی دریافت شد."
+          );
+        }
+      }
+
+      if (
+        !propertyResponse.ok ||
+        !propertyResult.success
+      ) {
         throw new Error(
           propertyResult.message ||
-            "ثبت آگهی با خطا مواجه شد."
+            `ثبت آگهی با خطا مواجه شد. (${propertyResponse.status})`
         );
       }
 
@@ -2092,9 +2148,7 @@ export default function Submit() {
                     : "bg-gray-2 text-gray-11 hover:bg-gray-3"
                 }`}
               >
-                <FiArrowRight
-                  size={17}
-                />
+                <FiArrowRight size={17} />
                 مرحله قبل
               </button>
 
@@ -2108,9 +2162,7 @@ export default function Submit() {
                 >
                   مرحله بعد
 
-                  <FiArrowLeft
-                    size={17}
-                  />
+                  <FiArrowLeft size={17} />
                 </button>
               ) : (
                 <button
