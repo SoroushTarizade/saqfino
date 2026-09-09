@@ -1,15 +1,11 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import { Resend } from "resend";
+import nodemailer from "nodemailer";
 
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
 import EmailVerificationToken from "@/models/EmailVerificationToken";
-
-const resend = new Resend(
-  process.env.RESEND_API_KEY,
-);
 
 export async function POST(request: Request) {
   try {
@@ -24,10 +20,6 @@ export async function POST(request: Request) {
       gender,
     } = body;
 
-    // =========================
-    // Validation
-    // =========================
-
     if (
       !firstName ||
       !lastName ||
@@ -39,8 +31,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "لطفاً تمام فیلدهای ضروری را تکمیل کنید.",
+          message: "لطفاً تمام فیلدهای ضروری را تکمیل کنید.",
         },
         { status: 400 },
       );
@@ -50,8 +41,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "جنسیت انتخاب‌شده معتبر نیست.",
+          message: "جنسیت انتخاب‌شده معتبر نیست.",
         },
         { status: 400 },
       );
@@ -61,8 +51,7 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "رمز عبور و تکرار آن یکسان نیستند.",
+          message: "رمز عبور و تکرار آن یکسان نیستند.",
         },
         { status: 400 },
       );
@@ -72,34 +61,25 @@ export async function POST(request: Request) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "رمز عبور باید حداقل ۸ کاراکتر باشد.",
+          message: "رمز عبور باید حداقل ۸ کاراکتر باشد.",
         },
         { status: 400 },
       );
     }
 
-    const normalizedEmail = email
-      .trim()
-      .toLowerCase();
+    const normalizedEmail = email.trim().toLowerCase();
 
-    const emailRegex =
-      /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+    const emailRegex = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
     if (!emailRegex.test(normalizedEmail)) {
       return NextResponse.json(
         {
           success: false,
-          message:
-            "ایمیل واردشده معتبر نیست.",
+          message: "ایمیل واردشده معتبر نیست.",
         },
         { status: 400 },
       );
     }
-
-    // =========================
-    // Database
-    // =========================
 
     await connectDB();
 
@@ -118,18 +98,7 @@ export async function POST(request: Request) {
       );
     }
 
-    // =========================
-    // Password Hash
-    // =========================
-
-    const passwordHash = await bcrypt.hash(
-      password,
-      12,
-    );
-
-    // =========================
-    // Create User
-    // =========================
+    const passwordHash = await bcrypt.hash(password, 12);
 
     const user = await User.create({
       firstName: firstName.trim(),
@@ -141,12 +110,9 @@ export async function POST(request: Request) {
       emailVerified: false,
     });
 
-    // =========================
-    // Create Verification Token
-    // =========================
-
-    const verificationToken =
-      crypto.randomBytes(32).toString("hex");
+    const verificationToken = crypto
+      .randomBytes(32)
+      .toString("hex");
 
     const tokenHash = crypto
       .createHash("sha256")
@@ -163,10 +129,6 @@ export async function POST(request: Request) {
       expiresAt,
     });
 
-    // =========================
-    // Verification URL
-    // =========================
-
     const appUrl =
       process.env.NEXT_PUBLIC_APP_URL ||
       "http://localhost:3000";
@@ -174,160 +136,190 @@ export async function POST(request: Request) {
     const verificationUrl =
       `${appUrl}/verify-email?token=${verificationToken}`;
 
-    // =========================
-    // Send Email
-    // =========================
+    const smtpUser = process.env.SMTP_USER;
+    const smtpPassword = process.env.SMTP_PASSWORD;
 
-    const { error: resendError } =
-      await resend.emails.send({
-        from:
-          process.env.RESEND_FROM_EMAIL ||
-          "Saqfino <onboarding@resend.dev>",
+    if (!smtpUser || !smtpPassword) {
+      throw new Error(
+        "SMTP_USER and SMTP_PASSWORD environment variables are required.",
+      );
+    }
+
+    const transporter = nodemailer.createTransport({
+      host: "smtp.gmail.com",
+      port: 465,
+      secure: true,
+      auth: {
+        user: smtpUser,
+        pass: smtpPassword,
+      },
+    });
+
+    try {
+      await transporter.sendMail({
+        from: `Saqfino <${smtpUser}>`,
         to: normalizedEmail,
         subject: "تأیید ایمیل حساب سقفینو",
         html: `
-          <!DOCTYPE html>
-          <html lang="fa" dir="rtl">
-            <head>
-              <meta charset="UTF-8" />
-              <meta
-                name="viewport"
-                content="width=device-width, initial-scale=1.0"
-              />
-              <title>تأیید ایمیل سقفینو</title>
-            </head>
-
-            <body
+          <div
+            dir="rtl"
+            style="
+              margin: 0;
+              padding: 40px 20px;
+              background-color: #f7f7f7;
+              font-family: Arial, Tahoma, sans-serif;
+            "
+          >
+            <div
               style="
-                margin: 0;
-                padding: 0;
-                background: #f8f8f8;
-                font-family: Arial, Tahoma, sans-serif;
+                max-width: 600px;
+                margin: 0 auto;
+                background-color: #ffffff;
+                border-radius: 12px;
+                padding: 40px;
+                box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
               "
             >
               <div
                 style="
-                  max-width: 600px;
-                  margin: 40px auto;
-                  padding: 0 20px;
+                  text-align: center;
+                  margin-bottom: 30px;
                 "
               >
-                <div
+                <h1
                   style="
-                    background: #ffffff;
-                    border-radius: 12px;
-                    padding: 40px 32px;
-                    text-align: right;
-                    border: 1px solid #eeeeee;
+                    margin: 0;
+                    color: #cb1b1b;
+                    font-size: 32px;
                   "
                 >
-                  <div
-                    style="
-                      margin-bottom: 28px;
-                      font-size: 28px;
-                      font-weight: bold;
-                      color: #cb1b1b;
-                    "
-                  >
-                    سقفینو
-                  </div>
-
-                  <h1
-                    style="
-                      margin: 0 0 16px;
-                      font-size: 24px;
-                      color: #222222;
-                    "
-                  >
-                    سلام ${user.firstName} عزیز 👋
-                  </h1>
-
-                  <p
-                    style="
-                      margin: 0 0 24px;
-                      font-size: 16px;
-                      line-height: 2;
-                      color: #666666;
-                    "
-                  >
-                    برای تکمیل ثبت‌نام در سقفینو،
-                    لطفاً ایمیل خود را تأیید کنید.
-                  </p>
-
-                  <a
-                    href="${verificationUrl}"
-                    style="
-                      display: inline-block;
-                      padding: 14px 28px;
-                      background: #cb1b1b;
-                      color: #ffffff;
-                      text-decoration: none;
-                      border-radius: 8px;
-                      font-size: 16px;
-                      font-weight: bold;
-                    "
-                  >
-                    تأیید ایمیل
-                  </a>
-
-                  <p
-                    style="
-                      margin: 28px 0 8px;
-                      font-size: 13px;
-                      line-height: 1.8;
-                      color: #999999;
-                    "
-                  >
-                    این لینک فقط ۳۰ دقیقه اعتبار دارد.
-                  </p>
-
-                  <p
-                    style="
-                      margin: 0;
-                      font-size: 13px;
-                      line-height: 1.8;
-                      color: #999999;
-                    "
-                  >
-                    اگر شما این حساب را ایجاد نکرده‌اید،
-                    می‌توانید این ایمیل را نادیده بگیرید.
-                  </p>
-                </div>
-
-                <p
-                  style="
-                    margin: 20px 0;
-                    text-align: center;
-                    font-size: 12px;
-                    color: #999999;
-                  "
-                >
-                  © سقفینو
-                </p>
+                  سقفینو
+                </h1>
               </div>
-            </body>
-          </html>
+
+              <h2
+                style="
+                  color: #222222;
+                  font-size: 22px;
+                  margin-bottom: 20px;
+                "
+              >
+                تأیید ایمیل حساب کاربری
+              </h2>
+
+              <p
+                style="
+                  color: #555555;
+                  font-size: 16px;
+                  line-height: 2;
+                  margin-bottom: 20px;
+                "
+              >
+                سلام،
+              </p>
+
+              <p
+                style="
+                  color: #555555;
+                  font-size: 16px;
+                  line-height: 2;
+                  margin-bottom: 25px;
+                "
+              >
+                برای تکمیل ثبت‌نام در سقفینو، لطفاً روی
+                دکمه زیر کلیک کنید و ایمیل خود را تأیید کنید.
+              </p>
+
+              <div
+                style="
+                  text-align: center;
+                  margin: 30px 0;
+                "
+              >
+                <a
+                  href="${verificationUrl}"
+                  style="
+                    display: inline-block;
+                    background-color: #cb1b1b;
+                    color: #ffffff;
+                    text-decoration: none;
+                    padding: 14px 30px;
+                    border-radius: 8px;
+                    font-size: 16px;
+                    font-weight: bold;
+                  "
+                >
+                  تأیید ایمیل
+                </a>
+              </div>
+
+              <p
+                style="
+                  color: #777777;
+                  font-size: 14px;
+                  line-height: 2;
+                  margin-top: 25px;
+                "
+              >
+                این لینک فقط به مدت ۳۰ دقیقه معتبر است.
+              </p>
+
+              <p
+                style="
+                  color: #999999;
+                  font-size: 13px;
+                  line-height: 2;
+                  margin-top: 20px;
+                  word-break: break-all;
+                "
+              >
+                اگر دکمه بالا برای شما کار نکرد، می‌توانید
+                لینک زیر را در مرورگر خود باز کنید:
+              </p>
+
+              <p
+                style="
+                  color: #cb1b1b;
+                  font-size: 12px;
+                  line-height: 1.8;
+                  word-break: break-all;
+                "
+              >
+                ${verificationUrl}
+              </p>
+
+              <hr
+                style="
+                  border: none;
+                  border-top: 1px solid #eeeeee;
+                  margin: 30px 0;
+                "
+              />
+
+              <p
+                style="
+                  color: #999999;
+                  font-size: 12px;
+                  line-height: 1.8;
+                  text-align: center;
+                  margin: 0;
+                "
+              >
+                اگر شما این درخواست را ایجاد نکرده‌اید،
+                می‌توانید این ایمیل را نادیده بگیرید.
+              </p>
+            </div>
+          </div>
         `,
       });
-
-    // =========================
-    // Resend Error
-    // =========================
-
-    if (resendError) {
+    } catch (emailError) {
       console.error(
-        "Resend email error:",
-        resendError,
+        "Gmail SMTP email error:",
+        emailError,
       );
 
-      // Remove the user because the required
-      // verification email could not be sent.
       await EmailVerificationToken.deleteOne({
-        _id: (
-          await EmailVerificationToken.findOne({
-            tokenHash,
-          })
-        )?._id,
+        tokenHash,
       });
 
       await User.deleteOne({
@@ -343,10 +335,6 @@ export async function POST(request: Request) {
         { status: 500 },
       );
     }
-
-    // =========================
-    // Success
-    // =========================
 
     return NextResponse.json(
       {
