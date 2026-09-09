@@ -7,6 +7,600 @@ import User from "@/models/User";
 import Session from "@/models/Session";
 import Property from "@/models/Property";
 
+export const dynamic = "force-dynamic";
+
+/*
+ * ----------------------------------------
+ * Helpers
+ * ----------------------------------------
+ */
+
+function escapeRegex(value: string) {
+  return value.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
+/*
+ * ----------------------------------------
+ * GET /api/properties
+ *
+ * Public endpoint for:
+ * - listing properties
+ * - filtering
+ * - searching
+ * - sorting
+ * - pagination
+ * ----------------------------------------
+ */
+
+export async function GET(request: Request) {
+  try {
+    await connectDB();
+
+    const { searchParams } = new URL(request.url);
+
+    /*
+     * ----------------------------------------
+     * 1. Pagination
+     * ----------------------------------------
+     */
+
+    const requestedPage = Number(
+      searchParams.get("page"),
+    );
+
+    const requestedLimit = Number(
+      searchParams.get("limit"),
+    );
+
+    const page = Math.max(
+      Number.isFinite(requestedPage)
+        ? Math.floor(requestedPage)
+        : 1,
+      1,
+    );
+
+    const limit = Math.min(
+      Math.max(
+        Number.isFinite(requestedLimit)
+          ? Math.floor(requestedLimit)
+          : 10,
+        1,
+      ),
+      50,
+    );
+
+    const skip = (page - 1) * limit;
+
+    /*
+     * ----------------------------------------
+     * 2. Read filters
+     * ----------------------------------------
+     */
+
+    const search =
+      searchParams.get("search")?.trim() || "";
+
+    const district =
+      searchParams.get("district")?.trim() || "";
+
+    const propertyType =
+      searchParams
+        .get("propertyType")
+        ?.trim() || "";
+
+    const price =
+      searchParams.get("price")?.trim() || "";
+
+    const area =
+      searchParams.get("area")?.trim() || "";
+
+    const bedroom =
+      searchParams.get("bedroom")?.trim() || "";
+
+    const buildYear =
+      searchParams
+        .get("buildYear")
+        ?.trim() || "";
+
+    const sort =
+      searchParams.get("sort")?.trim() ||
+      "جدیدترین";
+
+    /*
+     * ----------------------------------------
+     * 3. Base database filter
+     *
+     * Only active BUY properties should
+     * appear on /buy.
+     * ----------------------------------------
+     */
+
+    const filter: Record<
+      string,
+      unknown
+    > = {
+      transactionType: "buy",
+      status: "active",
+    };
+
+    /*
+     * ----------------------------------------
+     * 4. Search
+     *
+     * Search in:
+     * - title
+     * - city
+     * - district
+     * ----------------------------------------
+     */
+
+    if (search) {
+      const safeSearch =
+        escapeRegex(search);
+
+      filter.$or = [
+        {
+          title: {
+            $regex: safeSearch,
+            $options: "i",
+          },
+        },
+        {
+          city: {
+            $regex: safeSearch,
+            $options: "i",
+          },
+        },
+        {
+          district: {
+            $regex: safeSearch,
+            $options: "i",
+          },
+        },
+      ];
+    }
+
+    /*
+     * ----------------------------------------
+     * 5. District filter
+     * ----------------------------------------
+     */
+
+    if (
+      district &&
+      district !== "همه مناطق"
+    ) {
+      filter.district = district;
+    }
+
+    /*
+     * ----------------------------------------
+     * 6. Property type filter
+     *
+     * Frontend Persian -> Database English
+     * ----------------------------------------
+     */
+
+    if (
+      propertyType &&
+      propertyType !== "همه انواع"
+    ) {
+      const propertyTypeMap: Record<
+        string,
+        string
+      > = {
+        آپارتمان: "apartment",
+        خانه: "house",
+        ویلا: "villa",
+        زمین: "land",
+        تجاری: "commercial",
+        "دفتر کار": "commercial",
+      };
+
+      const mappedType =
+        propertyTypeMap[propertyType];
+
+      if (mappedType) {
+        filter.propertyType =
+          mappedType;
+      }
+    }
+
+    /*
+     * ----------------------------------------
+     * 7. Price filter
+     *
+     * Database:
+     * salePrice = تومان
+     * ----------------------------------------
+     */
+
+    if (
+      price &&
+      price !== "همه قیمت‌ها"
+    ) {
+      switch (price) {
+        case "زیر ۵ میلیارد":
+          filter.salePrice = {
+            $lt: 5_000_000_000,
+          };
+          break;
+
+        case "۵ تا ۱۰ میلیارد":
+          filter.salePrice = {
+            $gte: 5_000_000_000,
+            $lte: 10_000_000_000,
+          };
+          break;
+
+        case "۱۰ تا ۱۵ میلیارد":
+          filter.salePrice = {
+            $gt: 10_000_000_000,
+            $lte: 15_000_000_000,
+          };
+          break;
+
+        case "بالای ۱۵ میلیارد":
+          filter.salePrice = {
+            $gt: 15_000_000_000,
+          };
+          break;
+      }
+    }
+
+    /*
+     * ----------------------------------------
+     * 8. Area filter
+     * ----------------------------------------
+     */
+
+    if (
+      area &&
+      area !== "همه متراژها"
+    ) {
+      switch (area) {
+        case "زیر ۸۰ متر":
+          filter.area = {
+            $lt: 80,
+          };
+          break;
+
+        case "۸۰ تا ۱۲۰ متر":
+          filter.area = {
+            $gte: 80,
+            $lte: 120,
+          };
+          break;
+
+        case "۱۲۰ تا ۱۵۰ متر":
+          filter.area = {
+            $gt: 120,
+            $lte: 150,
+          };
+          break;
+
+        case "بالای ۱۵۰ متر":
+          filter.area = {
+            $gt: 150,
+          };
+          break;
+      }
+    }
+
+    /*
+     * ----------------------------------------
+     * 9. Bedroom filter
+     * ----------------------------------------
+     */
+
+    if (
+      bedroom &&
+      bedroom !== "همه تعداد اتاق‌ها"
+    ) {
+      switch (bedroom) {
+        case "بدون اتاق":
+          filter.bedrooms = 0;
+          break;
+
+        case "۱ خواب":
+          filter.bedrooms = 1;
+          break;
+
+        case "۲ خواب":
+          filter.bedrooms = 2;
+          break;
+
+        case "۳ خواب":
+          filter.bedrooms = 3;
+          break;
+
+        case "۴ خواب و بیشتر":
+          filter.bedrooms = {
+            $gte: 4,
+          };
+          break;
+      }
+    }
+
+    /*
+     * ----------------------------------------
+     * 10. Build year filter
+     * ----------------------------------------
+     */
+
+    if (
+      buildYear &&
+      buildYear !== "همه سال‌ها"
+    ) {
+      switch (buildYear) {
+        case "۱۴۰۳ به بعد":
+          filter.yearBuilt = {
+            $gte: 1403,
+          };
+          break;
+
+        case "۱۴۰۰ تا ۱۴۰۲":
+          filter.yearBuilt = {
+            $gte: 1400,
+            $lte: 1402,
+          };
+          break;
+
+        case "۱۳۹۵ تا ۱۳۹۹":
+          filter.yearBuilt = {
+            $gte: 1395,
+            $lte: 1399,
+          };
+          break;
+
+        case "قبل از ۱۳۹۵":
+          filter.yearBuilt = {
+            $lt: 1395,
+          };
+          break;
+      }
+    }
+
+    /*
+     * ----------------------------------------
+     * 11. Sorting
+     *
+     * _id is used as a stable tie-breaker
+     * so pagination does not randomly shift
+     * when two properties have the same value.
+     * ----------------------------------------
+     */
+
+    let sortQuery: Record<
+      string,
+      1 | -1
+    > = {
+      createdAt: -1,
+      _id: -1,
+    };
+
+    switch (sort) {
+      case "ارزان‌ترین":
+        sortQuery = {
+          salePrice: 1,
+          createdAt: -1,
+          _id: -1,
+        };
+        break;
+
+      case "گران‌ترین":
+        sortQuery = {
+          salePrice: -1,
+          createdAt: -1,
+          _id: -1,
+        };
+        break;
+
+      case "متراژ بیشتر":
+      case "بیشترین متراژ":
+        sortQuery = {
+          area: -1,
+          createdAt: -1,
+          _id: -1,
+        };
+        break;
+
+      case "متراژ کمتر":
+      case "کمترین متراژ":
+        sortQuery = {
+          area: 1,
+          createdAt: -1,
+          _id: -1,
+        };
+        break;
+
+      case "جدیدترین":
+      default:
+        sortQuery = {
+          createdAt: -1,
+          _id: -1,
+        };
+        break;
+    }
+
+    /*
+     * ----------------------------------------
+     * 12. Query MongoDB
+     *
+     * IMPORTANT:
+     * Filtering happens BEFORE pagination.
+     *
+     * This means:
+     * - filters are applied to all properties
+     * - total is correct
+     * - pagination is correct
+     * ----------------------------------------
+     */
+
+    const [
+      properties,
+      total,
+    ] = await Promise.all([
+      Property.find(filter)
+        .sort(sortQuery)
+        .skip(skip)
+        .limit(limit)
+        .lean(),
+
+      Property.countDocuments(filter),
+    ]);
+
+    /*
+     * ----------------------------------------
+     * 13. Pagination info
+     * ----------------------------------------
+     */
+
+    const totalPages =
+      Math.ceil(total / limit);
+
+    /*
+     * ----------------------------------------
+     * 14. Format MongoDB data
+     * for frontend
+     * ----------------------------------------
+     */
+
+    const formattedProperties =
+      properties.map((property) => ({
+        id: String(
+          property._id,
+        ),
+
+        image:
+          property.images?.[0] ||
+          "/images/default.png",
+
+        images:
+          property.images &&
+          property.images.length > 0
+            ? property.images
+            : ["/images/default.png"],
+
+        title:
+          property.title,
+
+        location:
+          `${property.city}، ${property.district}`,
+
+        district:
+          property.district,
+
+        /*
+         * Database:
+         * تومان
+         *
+         * Frontend:
+         * میلیون تومان
+         */
+
+        price:
+          Math.round(
+            (property.salePrice || 0) /
+              1_000_000,
+          ),
+
+        area:
+          property.area,
+
+        bedrooms:
+          property.bedrooms,
+
+        floor:
+          property.floor,
+
+        totalFloors:
+          property.totalFloors,
+
+        yearBuilt:
+          property.yearBuilt,
+
+        type:
+          property.propertyType,
+
+        amenities:
+          property.amenities || [],
+
+        description:
+          property.description,
+
+        lat:
+          property.latitude,
+
+        lng:
+          property.longitude,
+
+        createdAt:
+          new Date(
+            property.createdAt,
+          ).getTime(),
+      }));
+
+    /*
+     * ----------------------------------------
+     * 15. Return response
+     * ----------------------------------------
+     */
+
+    return NextResponse.json(
+      {
+        success: true,
+
+        properties:
+          formattedProperties,
+
+        pagination: {
+          page,
+          limit,
+          total,
+          totalPages,
+
+          hasNextPage:
+            page < totalPages,
+
+          hasPreviousPage:
+            page > 1,
+        },
+      },
+      {
+        status: 200,
+
+        headers: {
+          "Cache-Control":
+            "no-store, max-age=0",
+        },
+      },
+    );
+  } catch (error) {
+    console.error(
+      "GET /api/properties error:",
+      error,
+    );
+
+    return NextResponse.json(
+      {
+        success: false,
+        message:
+          "دریافت آگهی‌ها با خطا مواجه شد.",
+      },
+      {
+        status: 500,
+      },
+    );
+  }
+}
+
+/*
+ * ----------------------------------------
+ * Allowed values for POST
+ * ----------------------------------------
+ */
+
 const allowedTransactionTypes = [
   "buy",
   "rent",
@@ -25,6 +619,14 @@ type TransactionType =
 
 type PropertyType =
   (typeof allowedPropertyTypes)[number];
+
+/*
+ * ----------------------------------------
+ * POST /api/properties
+ *
+ * Creates a new property advertisement.
+ * ----------------------------------------
+ */
 
 export async function POST(
   request: Request,
@@ -132,12 +734,17 @@ export async function POST(
         "",
         {
           httpOnly: true,
+
           secure:
             process.env.NODE_ENV ===
             "production",
+
           sameSite: "lax",
+
           path: "/",
-          expires: new Date(0),
+
+          expires:
+            new Date(0),
         },
       );
 
@@ -170,7 +777,7 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 7. Make sure email is verified
+     * 7. Email verification
      * ----------------------------------------
      */
 
@@ -411,13 +1018,19 @@ export async function POST(
       Number(yearBuilt);
 
     const numericSalePrice =
-      Number(salePrice ?? 0);
+      Number(
+        salePrice ?? 0,
+      );
 
     const numericDeposit =
-      Number(deposit ?? 0);
+      Number(
+        deposit ?? 0,
+      );
 
     const numericRent =
-      Number(rent ?? 0);
+      Number(
+        rent ?? 0,
+      );
 
     const numericLatitude =
       Number(latitude);
@@ -427,7 +1040,7 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 14. Validate numeric values
+     * 14. Validate area
      * ----------------------------------------
      */
 
@@ -449,6 +1062,12 @@ export async function POST(
       );
     }
 
+    /*
+     * ----------------------------------------
+     * 15. Validate bedrooms
+     * ----------------------------------------
+     */
+
     if (
       !Number.isFinite(
         numericBedrooms,
@@ -466,6 +1085,12 @@ export async function POST(
         },
       );
     }
+
+    /*
+     * ----------------------------------------
+     * 16. Validate floor
+     * ----------------------------------------
+     */
 
     if (
       !Number.isFinite(
@@ -485,6 +1110,12 @@ export async function POST(
       );
     }
 
+    /*
+     * ----------------------------------------
+     * 17. Validate total floors
+     * ----------------------------------------
+     */
+
     if (
       !Number.isFinite(
         numericTotalFloors,
@@ -502,6 +1133,12 @@ export async function POST(
         },
       );
     }
+
+    /*
+     * ----------------------------------------
+     * 18. Validate year
+     * ----------------------------------------
+     */
 
     if (
       !Number.isFinite(
@@ -524,7 +1161,7 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 15. Validate floor relationship
+     * 19. Validate floor relationship
      * ----------------------------------------
      */
 
@@ -546,7 +1183,7 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 16. Validate location
+     * 20. Validate latitude
      * ----------------------------------------
      */
 
@@ -569,6 +1206,12 @@ export async function POST(
       );
     }
 
+    /*
+     * ----------------------------------------
+     * 21. Validate longitude
+     * ----------------------------------------
+     */
+
     if (
       !Number.isFinite(
         numericLongitude,
@@ -590,8 +1233,8 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 17. Validate price according to
-     *     transaction type
+     * 22. Validate price
+     * according to transaction type
      * ----------------------------------------
      */
 
@@ -661,7 +1304,7 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 18. Validate amenities
+     * 23. Validate amenities
      * ----------------------------------------
      */
 
@@ -680,14 +1323,11 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 19. Validate images
-     * ----------------------------------------
+     * 24. Validate images
      *
      * Images are uploaded to Cloudinary
-     * before this request reaches this API.
-     *
-     * The frontend sends only the returned
-     * Cloudinary secure URLs.
+     * before this API request.
+     * ----------------------------------------
      */
 
     let propertyImages: string[] = [];
@@ -711,6 +1351,10 @@ export async function POST(
           },
         );
       }
+
+      /*
+       * Maximum 10 images
+       */
 
       if (
         images.length >
@@ -739,6 +1383,10 @@ export async function POST(
           "CLOUDINARY_CLOUD_NAME is not configured",
         );
       }
+
+      /*
+       * Validate every image URL
+       */
 
       for (
         const imageUrl of images
@@ -809,8 +1457,7 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 20. Use default image when no image
-     *     was uploaded
+     * 25. Default image
      * ----------------------------------------
      */
 
@@ -825,12 +1472,12 @@ export async function POST(
 
     /*
      * ----------------------------------------
-     * 21. Create property
-     * ----------------------------------------
+     * 26. Create property
      *
      * IMPORTANT:
-     * userId comes from the authenticated
-     * session, NOT from the frontend.
+     * userId comes ONLY from the
+     * authenticated session.
+     * ----------------------------------------
      */
 
     const property =
@@ -862,11 +1509,19 @@ export async function POST(
         yearBuilt:
           numericYearBuilt,
 
+        /*
+         * BUY
+         */
+
         salePrice:
           transactionType ===
           "buy"
             ? numericSalePrice
             : undefined,
+
+        /*
+         * RENT
+         */
 
         deposit:
           transactionType ===
@@ -899,24 +1554,24 @@ export async function POST(
           numericLongitude,
 
         /*
-         * Cloudinary image URLs
-         * or the local default image.
+         * Cloudinary URLs
+         * or default image.
          */
 
         images:
           propertyImages,
 
         /*
-         * New advertisements should
-         * initially wait for approval.
+         * New advertisements are
+         * published immediately.
          */
 
-        status: "pending",
+        status: "active",
       });
 
     /*
      * ----------------------------------------
-     * 22. Return successful response
+     * 27. Successful response
      * ----------------------------------------
      */
 
@@ -925,10 +1580,11 @@ export async function POST(
         success: true,
 
         message:
-          "آگهی با موفقیت ثبت شد و در انتظار بررسی است.",
+          "آگهی با موفقیت ثبت شد و اکنون در سایت منتشر شده است.",
 
         property: {
-          id: property._id.toString(),
+          id:
+            property._id.toString(),
 
           status:
             property.status,
