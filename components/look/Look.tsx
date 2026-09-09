@@ -4,25 +4,25 @@ import Link from "next/link";
 const propertyTypes = [
   {
     title: "خانه مسکونی",
-    count: "27,300",
+    count: "7,300",
     image: "/images/Rectangle55.png",
     href: "/amlak/",
   },
   {
     title: "آپارتمان و برج",
-    count: "27,300",
+    count: "2,300",
     image: "/images/Rectangle54.png",
     href: "/amlak/",
   },
   {
     title: "ویلا",
-    count: "27,300",
+    count: "200",
     image: "/images/Rectangle53.png",
     href: "/amlak/",
   },
   {
     title: "تجاری و اداری",
-    count: "27,300",
+    count: "120",
     image: "/images/Rectangle52.png",
     href: "/amlak/",
   },
