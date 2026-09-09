@@ -6,25 +6,25 @@ const propertyTypes = [
     title: "خانه مسکونی",
     count: "27,300",
     image: "/images/Rectangle55.png",
-    href: "/amlak/residential",
+    href: "/amlak/",
   },
   {
     title: "آپارتمان و برج",
     count: "27,300",
     image: "/images/Rectangle54.png",
-    href: "/amlak/apartment",
+    href: "/amlak/",
   },
   {
     title: "ویلا",
     count: "27,300",
     image: "/images/Rectangle53.png",
-    href: "/amlak/villa",
+    href: "/amlak/",
   },
   {
     title: "تجاری و اداری",
     count: "27,300",
     image: "/images/Rectangle52.png",
-    href: "/amlak/commercial",
+    href: "/amlak/",
   },
 ];
 
