@@ -318,7 +318,7 @@ export default function Header() {
             "
           >
             <Image
-              src="/images/logo.png"
+              src="/favicon.png"
               alt="سقفینو"
               width={131}
               height={63}
