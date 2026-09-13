@@ -6,7 +6,7 @@
 
 <br />
 
-[🌐 Live Demo](https://saqfino-psi.vercel.app/) · [💻 Source Code](https://github.com/SoroushTarizade/saqfino) · [👨‍💻 Developer](https://soroushtarizadeh.vercel.app/en)
+[🌐 Live Demo](https://saqfinoapp.ir/) · [💻 Source Code](https://github.com/SoroushTarizade/saqfino) · [👨‍💻 Developer](https://soroushtarizadeh.vercel.app/en)
 
 <br />
 
@@ -703,7 +703,7 @@ npm start
 
 ### Try Saqfino
 
-**https://saqfino-psi.vercel.app/**
+**https://saqfinoapp.ir/**
 
 The project is designed to demonstrate a complete real-estate product experience rather than a collection of isolated frontend screens.
 
