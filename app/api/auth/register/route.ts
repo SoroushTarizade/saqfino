@@ -1,7 +1,7 @@
 import { NextResponse } from "next/server";
 import crypto from "crypto";
 import bcrypt from "bcryptjs";
-import nodemailer from "nodemailer";
+import { Resend } from "resend";
 
 import connectDB from "@/lib/mongodb";
 import User from "@/models/User";
@@ -136,29 +136,20 @@ export async function POST(request: Request) {
     const verificationUrl =
       `${appUrl}/verify-email?token=${verificationToken}`;
 
-    const smtpUser = process.env.SMTP_USER;
-    const smtpPassword = process.env.SMTP_PASSWORD;
+    const resendApiKey = process.env.RESEND_API_KEY;
 
-    if (!smtpUser || !smtpPassword) {
+    if (!resendApiKey) {
       throw new Error(
-        "SMTP_USER and SMTP_PASSWORD environment variables are required.",
+        "RESEND_API_KEY environment variable is required.",
       );
     }
 
-    const transporter = nodemailer.createTransport({
-      host: "smtp.gmail.com",
-      port: 465,
-      secure: true,
-      auth: {
-        user: smtpUser,
-        pass: smtpPassword,
-      },
-    });
+    const resend = new Resend(resendApiKey);
 
     try {
-      await transporter.sendMail({
-        from: `Saqfino <${smtpUser}>`,
-        to: normalizedEmail,
+      const { error } = await resend.emails.send({
+        from: "Saqfino <verify@saqfinoapp.ir>",
+        to: [normalizedEmail],
         subject: "تأیید ایمیل حساب سقفینو",
         html: `
           <div
@@ -312,9 +303,13 @@ export async function POST(request: Request) {
           </div>
         `,
       });
+
+      if (error) {
+        throw new Error(error.message);
+      }
     } catch (emailError) {
       console.error(
-        "Gmail SMTP email error:",
+        "Resend email error:",
         emailError,
       );
 
